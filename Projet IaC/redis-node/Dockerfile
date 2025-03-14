@@ -1,0 +1,7 @@
+FROM node
+COPY . .
+RUN ["yarn"]
+ENV REDIS_URL='redis://172.18.0.2:6379'
+ENV REDIS_REPLICAS_RUL=REDIS_URL
+ENV PORT=3000
+ENTRYPOINT ["node", "main.js"]
