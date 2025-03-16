@@ -1,6 +1,6 @@
 ## 1 - We create a Docker network to connect the Redis node and database
 ```
-$ docker network create redis-network
+$ docker network create redis-network --subnet 172.18.0.0/24
 ```
 
 ## 2 - Redis database
