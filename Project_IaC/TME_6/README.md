@@ -29,23 +29,23 @@ $ yarn
 
 We use this command to build the docker image using the Dockerfile :
 ```
-$ docker build -t tme6-redis-node-image <PATH>
+$ docker build -t tme6-node-redis-image <PATH>
 ```
 
-We can now run the redis-node container with the command :
+We can now run the node-redis container with the command :
 ```
-$ docker run --name redis-node\
+$ docker run --name node-redis\
     --network=redis-network\
     --ip 172.18.0.3\
     --publish 3000:3000\
-    -d tme6-redis-node-image
+    -d tme6-node-redis-image
 ```
 
 Now both are connected, we only need to add the frontend node.
 
 Also, we can find it's port and address with the same command as before :
 ```
-$ docker container inspect redis-node
+$ docker container inspect node-redis
 ```
 In our case, its port is **3000** and its address is **172.18.0.3**, but it is available on *localhost:3000* because of the *--publish 3000:3000* option.
 
@@ -74,7 +74,7 @@ And run it with the URL *localhost:8080*.
 
 It is now functionning without the http tunnels. To use them, we can add 2 steps to the process :
 
-- After running the *redis-node* container, we can open an http tunnel to the linked to the port **3000** (the host port in the *--publish* option) and use its URL to configure the frontend.
+- After running the *node-redis* container, we can open an http tunnel to the linked to the port **3000** (the host port in the *--publish* option) and use its URL to configure the frontend.
 - After configuring the frontend and running the *redis-react* container, we can open another http tunnel linked to the port **8080** (the host port in the *--publish* option).
 
-Then, our frontend and database (*redis-node* + *redis* containers) can be run on different machines over the Internet.
+Then, our frontend and database (*node-redis* + *redis* containers) can be run on different machines over the Internet.

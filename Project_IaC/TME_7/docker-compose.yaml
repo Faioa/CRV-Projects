@@ -1,0 +1,50 @@
+services:
+  main:
+    image: redis:7.2
+    hostname: redis
+    ports:
+      - 6379
+    networks:
+      - redis-network
+
+  replica:
+    image: redis:7.2
+    hostname: redis-replica
+    deploy:
+      replicas: 3
+    command: redis-server --slaveof redis 6379
+    depends_on:
+      - main
+    networks:
+      - redis-network
+
+  node-redis:
+    image: faioa/crv:tme6-node-redis-image
+    hostname: node-redis
+    ports:
+      - 3000:3000
+    depends_on:
+      - main
+      - replica
+    networks:
+      - redis-network
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - REDIS_REPLICAS_URL=redis://redis-replica:6379
+
+  frontend:
+    image: faioa/crv:tme6-redis-react-image
+    hostname: crv-IaC-app
+    ports:
+      - 8080:3000
+    depends_on:
+      - node-redis
+
+networks:
+  redis-network:
+    name: redis-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24
+          gateway: 172.18.0.1

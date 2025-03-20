@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-redis-deployment
+  labels:
+    app: node-redis
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: node-redis
+  template:
+    metadata:
+      labels:
+        app: node-redis
+    spec:
+      containers:
+        - name: node-redis
+          imagePullPolicy: Always
+          image: faioa/crv:tme6-node-redis-image
+          ports:
+            - containerPort: 3000

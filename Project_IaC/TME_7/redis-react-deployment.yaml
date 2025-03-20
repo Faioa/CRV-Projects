@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-react-deployment
+  labels:
+    app: redis-react
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: redis-react
+  template:
+    metadata:
+      labels:
+        app: redis-react
+    spec:
+      containers:
+        - name: redis-react
+          imagePullPolicy: Always
+          image: faioa/crv:tme6-redis-react-image
+          ports:
+            - containerPort: 3000:8080
