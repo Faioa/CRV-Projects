@@ -17,9 +17,12 @@ spec:
       containers:
         - name: node-redis
           image: faioa/crv:tme6-node-redis-image
+          imagePullPolicy: Always
           ports:
           - containerPort: 3000
           env:
+          - name: PORT
+            value: 3000
           - name: REDIS_URL
             value: "redis://redis.default.svc.cluster.local:6379"
           - name: REDIS_REPLICAS
