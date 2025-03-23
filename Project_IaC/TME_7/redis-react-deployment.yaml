@@ -5,7 +5,7 @@ metadata:
   labels:
     app: redis-react
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: redis-react
@@ -16,7 +16,30 @@ spec:
     spec:
       containers:
         - name: redis-react
-          imagePullPolicy: Always
           image: faioa/crv:tme6-redis-react-image
+          imagePullPolicy: Always
           ports:
-            - containerPort: 3000:8080
+          - containerPort: 3000
+          volumeMounts:
+          - name: config-volume
+            mountPath: src/conf.js
+            subPath: conf.js
+      volumes:
+      - name: config-volume
+        configMap:
+          name: redis-react-config
+          items:
+          - key: conf.js
+            path: conf.js
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-react
+spec:
+  type: LoadBalancer
+  selector:
+    app: redis-react
+  ports:
+  - port: 80
+    targetPort: 3000
