@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-replica-deployment
+  labels:
+    app: redis-replica
+spec:
+  selector:
+    matchLabels:
+      app: redis-replica
+  template:
+    metadata:
+      labels:
+        app: redis-replica
+    spec:
+      containers:
+        - name: redis-replica
+          image: redis:7.2
+          ports:
+          - containerPort: 6379
+          command: ["redis-server"]
+          args: ["--slaveof redis.default.svc.cluster.local 6379"]
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: redis-replica-autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: redis-replica
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+

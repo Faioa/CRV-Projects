@@ -1,0 +1,4 @@
+- Redis replicas
+- Use of Ingress instead of ConfigMap -> IP du node du service dans l'ingress
+- Prometheus on every service (redis (prometheus exporter) + node-redis)
+- Graphana
