@@ -1,10 +1,4 @@
-## 1 - Changing the react configuration file
-There is a need to change it because the project uses a hardcoded URL and we would prefer to override it with environment variables when needed.
-```
-export const URL = process.env.URL || "http://node-redis:3000"
-```
-
-## 2 - Launching the node-redis Service as a LoadBalancer
+## 1 - Launching the node-redis Service as a LoadBalancer
 In both cases, we'll need to get the IP and port of the service after it's deployed. We configure a ConfigMap with the URL of the service and after its deployment we can finally deploy the frontend. Since we are using *minikube*, we need to start a tunnel to make the load balancers work.
 ```
 $ minikube start
@@ -16,7 +10,7 @@ $ echo "$(kubectl get service node-redis -o jsonpath='{.status.loadBalancer.ingr
 ```
 
 The service uses the address **10.107.93.52** and listens on port **80**.\
-We can now modify the ConfigMap and apply it.
+We can now modify the ConfigMap and apply it. This ConfigMap overwrites the *src/config.js* file in the frontend's container with the correct IP of the **node-redis** server.
 ```
 $ kubectl apply -f redis-react-config.yaml
 ```
