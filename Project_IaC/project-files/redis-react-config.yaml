@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: redis-react-config
-data:
-  conf.js: |
-    export const URL = 'http://10.107.93.52:80'

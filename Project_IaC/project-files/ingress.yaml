@@ -3,17 +3,22 @@ kind: Ingress
 metadata:
   name: minimal-ingress
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
+  defaultBackend:
+    resource:
+      kind: Service
+      name: redis-react
   rules:
-  - host: "node-redis"
-    http:
+  - http:
       paths:
-      - path: /
-        pathType: Prefix
+      - path: /node-redis(/|$)(.*)
+        pathType: ImplementationSpecific
         backend:
           service:
             name: node-redis
             port:
               number: 80
+

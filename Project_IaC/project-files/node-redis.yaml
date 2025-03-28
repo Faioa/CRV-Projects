@@ -33,7 +33,6 @@ kind: Service
 metadata:
   name: node-redis
 spec:
-  type: LoadBalancer
   selector:
     app: node-redis
   ports:
