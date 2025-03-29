@@ -18,18 +18,11 @@ spec:
           image: faioa/crv:tme6-redis-react-image
           imagePullPolicy: Always
           ports:
-          - containerPort: 3000
-          volumeMounts:
-          - name: config-volume
-            mountPath: src/conf.js
-            subPath: conf.js
-      volumes:
-      - name: config-volume
-        configMap:
-          name: redis-react-config
-          items:
-          - key: conf.js
-            path: conf.js
+          - containerPort: 8080
+          env:
+          - name: "API_URL"
+            value: "${INGRESS_CONTROLLER_URL}/node-redis"
+
 ---
 apiVersion: v1
 kind: Service
@@ -40,13 +33,4 @@ spec:
     app: redis-react
   ports:
   - port: 80
-    targetPort: 3000
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: redis-react-config
-data:
-  conf.js: |
-    export const URL = "http://192.168.49.2:30225/node-redis"
+    targetPort: 8080

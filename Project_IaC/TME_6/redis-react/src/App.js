@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { URL } from './conf'
+
+var URL = window.env.API_URL
 
 function App() {
   const [state, setState] = useState([])

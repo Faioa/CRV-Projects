@@ -36,7 +36,7 @@ services:
     image: faioa/crv:tme6-redis-react-image
     hostname: crv-IaC-app
     ports:
-      - 8080:3000
+      - 8080:8080
     depends_on:
       - node-redis
 

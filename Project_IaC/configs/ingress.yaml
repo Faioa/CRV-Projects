@@ -6,14 +6,16 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
-  ingressClassName: nginx
-  defaultBackend:
-    resource:
-      kind: Service
-      name: redis-react
   rules:
   - http:
       paths:
+      - path: /()(.*)$
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: redis-react
+            port:
+              number: 80
       - path: /node-redis(/|$)(.*)
         pathType: ImplementationSpecific
         backend:
@@ -21,4 +23,3 @@ spec:
             name: node-redis
             port:
               number: 80
-
