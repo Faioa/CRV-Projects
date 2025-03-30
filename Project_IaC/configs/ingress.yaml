@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: minimal-ingress
+  name: default-ingress
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/use-regex: "true"
@@ -9,17 +9,46 @@ spec:
   rules:
   - http:
       paths:
-      - path: /()(.*)$
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: redis-react
-            port:
-              number: 80
+      # - path: /()(.*)$
+      #   pathType: ImplementationSpecific
+      #   backend:
+      #     service:
+      #       name: redis-react
+      #       port:
+      #         number: 80
       - path: /node-redis(/|$)(.*)
         pathType: ImplementationSpecific
         backend:
           service:
             name: node-redis
+            port:
+              number: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monitoring-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /prometheus(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: prometheus
+            port:
+              number: 80
+      # - path: /grafana(/|$)(.*)
+      - path: /(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: grafana
             port:
               number: 80

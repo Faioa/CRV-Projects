@@ -7,3 +7,5 @@ The database might not be available immediately. If the default key is not rende
 - Graphana
 - better README
 - PDF report
+- PROMETHEUS + GRAPHANA IN BASIC PROJECT.SH (addon storage-provisioner ?) + addons configuration (ingress metrics)
+- Paths & redirections correct
