@@ -67,19 +67,19 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/grafana
               name: grafana-pv
-            # - mountPath: /etc/grafana/grafana.ini
-            #   name: grafana-config
-            #   subPath: grafana.ini
+            - mountPath: /etc/grafana/grafana.ini
+              name: grafana-config
+              subPath: grafana.ini
       volumes:
         - name: grafana-pv
           persistentVolumeClaim:
             claimName: grafana-pvc
-        # - name: grafana-config
-        #   configMap:
-        #     name: grafana-config
-        #     items:
-        #     - key: grafana.ini
-        #       path: grafana.ini
+        - name: grafana-config
+          configMap:
+            name: grafana-config
+            items:
+            - key: grafana.ini
+              path: grafana.ini
 
 ---
 apiVersion: v1
@@ -90,6 +90,7 @@ metadata:
 spec:
   selector:
     app: grafana
+  sessionAffinity: None
   ports:
     - port: 80
       targetPort: http-grafana
@@ -103,14 +104,14 @@ metadata:
 data:
   grafana.ini: |
     [server]
-    domain = http://192.168.49.2:31842
-    root_url = http://192.168.49.2:31842/grafana/
+    domain = "${INGRESS_CONTROLLER_ADDR}"
+    root_url = "${INGRESS_CONTROLLER_PROT}://${INGRESS_CONTROLLER_ADDR}/grafana/"
     serve_from_sub_path = true
-    enforce_domain = true
+    enforce_domain = false
 
     [security]
-    cookie_secure = true
-    cookie_samesite = none
+    cookie_secure = false
+    cookie_samesite = lax
 
     [log]
     mode = console

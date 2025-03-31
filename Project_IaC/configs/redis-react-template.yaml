@@ -21,7 +21,7 @@ spec:
           - containerPort: 8080
           env:
           - name: "API_URL"
-            value: "${INGRESS_CONTROLLER_URL}/node-redis"
+            value: "${INGRESS_CONTROLLER_PROT}://${INGRESS_CONTROLLER_ADDR}/node-redis"
 
 ---
 apiVersion: v1

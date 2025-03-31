@@ -3,9 +3,10 @@ The script uses the default minikube profile, backup your configurations before 
 The database might not be available immediately. If the default key is not rendered in the frontend, retry after a few seconds.
 
 #TODO :
-- Prometheus on every service (redis (prometheus exporter) + node-redis)
-- Graphana
-- better README
-- PDF report
-- PROMETHEUS + GRAPHANA IN BASIC PROJECT.SH (addon storage-provisioner ?) + addons configuration (ingress metrics)
-- Paths & redirections correct
+- **better README**
+- **PDF report**
+- **Persistent storage**
+- **Modifying script to just stop and not delete pods etc OR ensure data persistence across pods ?**
+- Dashboards grafana predefined + source predefined
+- Prometheus exporters on every service (redis + node-redis)
+(- redirection nginx web-server)

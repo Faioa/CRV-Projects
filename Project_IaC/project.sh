@@ -2,8 +2,8 @@
 
 MINIKUBE_OPTIONS="--driver=docker --memory=4096 --cpus=2"
 DEFAULT_DIR="$(dirname $0)/configs"
-REQUIRED_FILES=("redis.yaml" "redis-replica.yaml" "node-redis.yaml" "redis-react-template.yaml" "ingress.yaml")
-USED_FILES=("redis.yaml" "redis-replica.yaml" "node-redis.yaml" "redis-react.yaml" "ingress.yaml")
+REQUIRED_FILES=("redis.yaml" "redis-replica.yaml" "node-redis.yaml" "redis-react-template.yaml" "ingress.yaml" "grafana-template.yaml" "prometheus-template.yaml")
+USED_FILES=("redis.yaml" "redis-replica.yaml" "node-redis.yaml" "redis-react.yaml" "ingress.yaml" "grafana.yaml" "prometheus.yaml")
 
 help_cmd() {
   echo -e "\033[1;34mUsage : $0 {start|stop|dashboard|help} [config_dir]\033[0m"
@@ -66,8 +66,15 @@ start_cluster() {
   echo -e "\033[1;34mDone !\033[0m"
 
   echo "Deploying services..."
-  export INGRESS_CONTROLLER_URL=$(minikube service -n ingress-nginx ingress-nginx-controller --url | head -n 1)
+  local TMP=$(minikube service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
+  check_command
+  export INGRESS_CONTROLLER_PROT=$(echo $TMP | cut -f 1 -d ' ')
+  export INGRESS_CONTROLLER_ADDR=$(echo $TMP | cut -f 2 -d ' ')
   envsubst < "$config_dir/redis-react-template.yaml" > "$config_dir/redis-react.yaml"
+  envsubst < "$config_dir/grafana-template.yaml" > "$config_dir/grafana.yaml"
+  envsubst < "$config_dir/prometheus-template.yaml" > "$config_dir/prometheus.yaml"
+
+  kubectl create namespace monitoring >/dev/null
   check_command
   for file in "${USED_FILES[@]}"; do
     kubectl apply -f "$config_dir/$file" >/dev/null
@@ -84,12 +91,16 @@ start_cluster() {
   check_command
   kubectl wait --for=condition=ready pod -l app=node-redis --timeout=120s >/dev/null
   check_command
+  kubectl wait -n monitoring --for=condition=ready pod -l app=grafana --timeout=120s >/dev/null
+  check_command
   echo -e "\033[1;34mDone !\033[0m"
 
   echo -e "\033[1;32mCluster started successfully !\033[0m"
   echo "Access URLs:"
-  echo "• Frontend: $INGRESS_CONTROLLER_URL"
-  echo "• API: $INGRESS_CONTROLLER_URL/node-redis"
+  echo "• Frontend: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR"
+  echo "• API: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/node-redis"
+  echo "• Grafana : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/grafana"
+  echo "• Prometheus : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/prometheus"
 }
 
 stop_cluster() {
@@ -102,7 +113,13 @@ stop_cluster() {
       check_command
     fi
   done
-  rm "$config_dir/redis-react.yaml" > /dev/null
+  kubectl delete namespace monitoring >/dev/null
+  check_command
+  rm "$config_dir/redis-react.yaml" >/dev/null
+  check_command
+  rm "$config_dir/grafana.yaml" >/dev/null
+  check_command
+  rm "$config_dir/prometheus.yaml" >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 

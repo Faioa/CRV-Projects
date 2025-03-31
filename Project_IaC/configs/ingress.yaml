@@ -9,13 +9,13 @@ spec:
   rules:
   - http:
       paths:
-      # - path: /()(.*)$
-      #   pathType: ImplementationSpecific
-      #   backend:
-      #     service:
-      #       name: redis-react
-      #       port:
-      #         number: 80
+      - path: /()(.*)$
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: redis-react
+            port:
+              number: 80
       - path: /node-redis(/|$)(.*)
         pathType: ImplementationSpecific
         backend:
@@ -28,25 +28,39 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: monitoring-ingress
+  name: prometheus-ingress
   namespace: monitoring
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   rules:
   - http:
       paths:
-      - path: /prometheus(/|$)(.*)
-        pathType: ImplementationSpecific
+      - path: /prometheus
+        pathType: Prefix
         backend:
           service:
             name: prometheus
             port:
               number: 80
-      # - path: /grafana(/|$)(.*)
-      - path: /(/|$)(.*)
-        pathType: ImplementationSpecific
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "grafana_session"
+    nginx.ingress.kubernetes.io/session-cookie-path: "/grafana"
+    nginx.ingress.kubernetes.io/session-cookie-samesite: "Lax"
+    nginx.ingress.kubernetes.io/session-cookie-change-on-failure: "true"
+    nginx.ingress.kubernetes.io/session-cookie-conditional-samesite-none: "true"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /grafana
+        pathType: Prefix
         backend:
           service:
             name: grafana

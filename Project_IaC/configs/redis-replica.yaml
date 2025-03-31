@@ -5,6 +5,7 @@ metadata:
   labels:
     app: redis-replica
 spec:
+  replicas: 3
   selector:
     matchLabels:
       app: redis-replica
