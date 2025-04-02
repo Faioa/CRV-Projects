@@ -29,10 +29,15 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /etc/prometheus
+        - name: prometheus-pv
+          mountPath: /prometheus
       volumes:
       - name: config
         configMap:
           name: prometheus-config
+      - name: prometheus-pv
+        persistentVolumeClaim:
+            claimName: prometheus-pvc
 
 ---
 apiVersion: v1
@@ -120,3 +125,17 @@ subjects:
 - kind: ServiceAccount
   name: prometheus
   namespace: monitoring
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-pvc
+  namespace: monitoring
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

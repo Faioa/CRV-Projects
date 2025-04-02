@@ -19,8 +19,26 @@ spec:
           image: redis:7.2
           ports:
           - containerPort: 6379
-          command: ["redis-server"]
-          args: ["--slaveof redis.default.svc.cluster.local 6379"]
+          command:
+            - "redis-server"
+          args:
+            - "--replicaof"
+            - "redis.default.svc.cluster.local"
+            - "6379"
+            - "--protected-mode"
+            - "no"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-replica
+spec:
+  selector:
+    app: redis-replica
+  ports:
+  - port: 6379
+    targetPort: 6379
 
 ---
 apiVersion: autoscaling/v2

@@ -28,7 +28,7 @@ spec:
           - name: REDIS_URL
             value: "redis://redis.default.svc.cluster.local:6379"
           - name: REDIS_REPLICAS
-            value: "redis://redis.default.svc.cluster.local:6379"
+            value: "redis://redis-replica.default.svc.cluster.local:6379"
 
 ---
 apiVersion: v1

@@ -5,8 +5,9 @@ The database might not be available immediately. If the default key is not rende
 #TODO :
 - **better README**
 - **PDF report**
-- **Persistent storage**
-- **Modifying script to just stop and not delete pods etc OR ensure data persistence across pods ?**
-- Dashboards grafana predefined + source predefined
-- Prometheus exporters on every service (redis + node-redis)
-(- redirection nginx web-server)
+- **Persistent storage** yes BUT NOT on new clusters (kubectl delete -f ... erase everything)
+- Cleaner code organization
+- **Modifying script to just stop and not delete pods AND ensure data persistence across clusters ?**
+- Dashboards grafana predefined + source predefined ?
+- Prometheus exporters on redis
+- state of cluster in file

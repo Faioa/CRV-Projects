@@ -1,9 +1,9 @@
 #!/bin/sh
 
-MINIKUBE_OPTIONS="--driver=docker --memory=4096 --cpus=2"
+MINIKUBE_OPTIONS="--memory=4096 --cpus=2 --disable-driver-mounts --mount --mount-string=${PWD}/volumes/:/tmp/volumes"
 DEFAULT_DIR="$(dirname $0)/configs"
 REQUIRED_FILES=("redis.yaml" "redis-replica.yaml" "node-redis.yaml" "redis-react-template.yaml" "ingress.yaml" "grafana-template.yaml" "prometheus-template.yaml")
-USED_FILES=("redis.yaml" "redis-replica.yaml" "node-redis.yaml" "redis-react.yaml" "ingress.yaml" "grafana.yaml" "prometheus.yaml")
+USED_FILES=("redis.yaml" "redis-replica.yaml" "node-redis.yaml" "redis-react.yaml" "ingress.yaml" "prometheus.yaml" "grafana.yaml")
 
 help_cmd() {
   echo -e "\033[1;34mUsage : $0 {start|stop|dashboard|help} [config_dir]\033[0m"

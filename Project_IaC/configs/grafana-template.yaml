@@ -1,19 +1,5 @@
 #https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/
 
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: grafana-pvc
-  namespace: monitoring
-spec:
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -90,7 +76,6 @@ metadata:
 spec:
   selector:
     app: grafana
-  sessionAffinity: None
   ports:
     - port: 80
       targetPort: http-grafana
@@ -124,3 +109,17 @@ data:
     enabled = true
     org_name = Main Org.
     org_role = Viewer
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: monitoring
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

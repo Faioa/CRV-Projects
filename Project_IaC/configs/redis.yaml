@@ -18,6 +18,29 @@ spec:
           image: redis:7.2
           ports:
           - containerPort: 6379
+          command:
+            - "redis-server"
+          args:
+            - "--protected-mode"
+            - "no"
+            - "--lazyfree-lazy-eviction"
+            - "no"
+            - "--lazyfree-lazy-expire"
+            - "no"
+            - "--lazyfree-lazy-server-del"
+            - "no"
+            - "--save"
+            - "300"
+            - "1"
+            - "--appendonly"
+            - "no"
+          volumeMounts:
+          - name: redis-pv
+            mountPath: /data
+      volumes:
+      - name: redis-pv
+        persistentVolumeClaim:
+          claimName: redis-pvc
 
 ---
 apiVersion: v1
@@ -30,3 +53,16 @@ spec:
   ports:
   - port: 6379
     targetPort: 6379
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
