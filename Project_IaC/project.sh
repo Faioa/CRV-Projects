@@ -1,6 +1,7 @@
 #!/bin/sh
 
-MINIKUBE_OPTIONS="--memory=4096 --cpus=4 --disable-driver-mounts"
+MINIKUBE_OPTIONS="--memory=4096 --cpus=4 --disable-driver-mounts --wait=all"
+PROFILE_NAME="crv-cluster-iac"
 DEFAULT_DIR="$(dirname $0)"
 REQUIRED_FILES=("grafana/grafana.yaml"\
                 "grafana/grafana-config-template.yaml"\
@@ -94,76 +95,40 @@ start_cluster() {
     if [[ $tmp = "1" ]]; then
       echo -e "\033[0;31mERROR: A previous running instance of the cluster was found. Please delete it before starting another one.\033[0m" >&2
       exit 2
-    else
-      if [[ $tmp = "2" ]]; then
-        echo "A previous stopped instance of the cluster was found : Restarting previous instance..."
-        minikube start >/dev/null
-        check_command
-        echo -e "\033[1;34mDone !\033[0m"
-
-        local tmp_url=$(minikube service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
-        check_command
-        INGRESS_CONTROLLER_PROT=$(echo $tmp_url | cut -f 1 -d ' ')
-        INGRESS_CONTROLLER_ADDR=$(echo $tmp_url | cut -f 2 -d ' ')
-
-        echo "Waiting for resources to be ready..."
-        kubectl wait --for=condition=ready pod -l app=redis-react --timeout=120s >/dev/null
-        check_command
-        kubectl wait --for=condition=ready pod -l app=redis-replica --timeout=120s >/dev/null
-        check_command
-        kubectl wait --for=condition=ready pod -l app=redis --timeout=120s >/dev/null
-        check_command
-        kubectl wait --for=condition=ready pod -l app=node-redis --timeout=120s >/dev/null
-        check_command
-        kubectl wait -n monitoring --for=condition=ready pod -l app=grafana --timeout=120s >/dev/null
-        check_command
-        kubectl wait --namespace ingress-nginx \
-          --for=condition=ready pod \
-          --selector=app.kubernetes.io/component=controller \
-          --timeout=120s >/dev/null
-        check_command
-        echo -e "\033[1;34mDone !\033[0m"
-
-        echo "Updating the cluster's state..."
-        echo "1" > $state_file
-        echo -e "\033[1;34mDone !\033[0m"
-
-        echo -e "\033[1;32mCluster started successfully !\033[0m"
-        echo "Access URLs:"
-        echo "• Frontend: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR"
-        echo "• API: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/node-redis"
-        echo "• Grafana : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/grafana"
-        echo "• Prometheus : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/prometheus"
-
-        exit 0
-      fi
     fi
   fi
 
-  echo "Starting Minikube cluster..."
-  minikube start $MINIKUBE_OPTIONS >/dev/null
-  check_command
-  echo -e "\033[1;34mDone !\033[0m"
+  if [[ $tmp = "2" ]]; then
+     echo "A previous stopped instance of the cluster was found : Restarting previous instance..."
+        minikube -p $PROFILE_NAME start >/dev/null
+        check_command
+        echo -e "\033[1;34mDone !\033[0m"
+  else
+    echo "Starting Minikube cluster..."
+    minikube -p $PROFILE_NAME start $MINIKUBE_OPTIONS >/dev/null
+    check_command
+    echo -e "\033[1;34mDone !\033[0m"
 
-  echo "Enabling Minikube addons..."
-  minikube addons enable metrics-server >/dev/null
-  check_command
-  minikube addons enable ingress >/dev/null
-  check_command
-  minikube addons enable dashboard >/dev/null
-  check_command
-  echo -e "\033[1;34mDone !\033[0m"
+    echo "Enabling Minikube addons..."
+    minikube -p $PROFILE_NAME addons enable metrics-server >/dev/null
+    check_command
+    minikube -p $PROFILE_NAME addons enable ingress >/dev/null
+    check_command
+    minikube -p $PROFILE_NAME addons enable dashboard >/dev/null
+    check_command
+    echo -e "\033[1;34mDone !\033[0m"
+  fi
 
   echo "Waiting for ingress controller to be ready..."
-  kubectl wait --namespace ingress-nginx \
+  kubectl wait --context=$PROFILE_NAME --namespace ingress-nginx \
     --for=condition=ready pod \
     --selector=app.kubernetes.io/component=controller \
     --timeout=120s >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 
-  echo "Deploying services..."
-  local tmp_url=$(minikube service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
+
+  local tmp_url=$(minikube -p $PROFILE_NAME service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
   check_command
   export INGRESS_CONTROLLER_PROT=$(echo $tmp_url | cut -f 1 -d ' ')
   export INGRESS_CONTROLLER_ADDR=$(echo $tmp_url | cut -f 2 -d ' ')
@@ -171,24 +136,29 @@ start_cluster() {
   envsubst < "$config_dir/grafana/grafana-config-template.yaml" > "$config_dir/grafana/grafana-config.yaml"
   envsubst < "$config_dir/prometheus/prometheus-template.yaml" > "$config_dir/prometheus/prometheus.yaml"
 
-  kubectl create namespace monitoring >/dev/null
-  check_command
-  for file in "${USED_FILES[@]}"; do
-    kubectl apply -f "$config_dir/$file" >/dev/null
+  if [[ $tmp != "2" ]]; then
+    echo "Deploying services..."
+    kubectl create --context=$PROFILE_NAME namespace monitoring >/dev/null
     check_command
-  done
-  echo -e "\033[1;34mDone !\033[0m"
+    for file in "${USED_FILES[@]}"; do
+      kubectl apply --context=$PROFILE_NAME -f "$config_dir/$file" >/dev/null
+      check_command
+    done
+    echo -e "\033[1;34mDone !\033[0m"
+  fi
 
   echo "Waiting for pods to be ready..."
-  kubectl wait --for=condition=ready pod -l app=redis-react --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis-react --timeout=120s >/dev/null
   check_command
-  kubectl wait --for=condition=ready pod -l app=redis-replica --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis-replica --timeout=120s >/dev/null
   check_command
-  kubectl wait --for=condition=ready pod -l app=redis --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis --timeout=120s >/dev/null
   check_command
-  kubectl wait --for=condition=ready pod -l app=node-redis --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=node-redis --timeout=120s >/dev/null
   check_command
-  kubectl wait -n monitoring --for=condition=ready pod -l app=grafana --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=ready pod -l app=grafana --timeout=120s >/dev/null
+  check_command
+  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=ready pod -l app=prometheus --timeout=120s >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 
@@ -220,10 +190,8 @@ stop_cluster() {
     fi
   fi
 
-  verify_config_dir "$config_dir"
-
   echo "Stopping Minikube cluster..."
-  minikube stop >/dev/null
+  minikube stop -p $PROFILE_NAME >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 
@@ -243,47 +211,19 @@ delete_cluster() {
   if [[ $tmp = "0" ]]; then
     echo -e "\033[0;31mERROR: Cannot delete the cluster as it doesn't exist.\033[0m" >&2
     exit 2
-  else
-    if [[ $tmp = "2" ]]; then
-      echo "Restarting the cluster..."
-      minikube start >/dev/null
-      check_command
-      echo -e "\033[1;34mDone !\033[0m"
-    fi
   fi
 
   verify_config_dir "$config_dir"
 
-  echo "Cleaning Kubernetes resources..."
-  for file in "${USED_FILES[@]}"; do
-      kubectl delete -f "$config_dir/$file" >/dev/null
-      check_command
-  done
-  echo -e "\033[1;34mDone !\033[0m"
-
-  echo "Deleting namespaces..."
-  kubectl delete namespace monitoring >/dev/null
-  echo -e "\033[1;34mDone !\033[0m"
-
-  echo "Removing temporary configuration files..."
-  check_command
+  echo "Deleting temporary configuration files..."
   for file in "${DELETE_FILES[@]}"; do
     rm "$config_dir/$file" >/dev/null
     check_command
   done
   echo -e "\033[1;34mDone !\033[0m"
 
-  echo "Disabling Minikube addons..."
-  minikube addons disable metrics-server >/dev/null
-  check_command
-  minikube addons disable ingress >/dev/null
-  check_command
-  minikube addons disable dashboard >/dev/null
-  check_command
-  echo -e "\033[1;34mDone !\033[0m"
-
-  echo "Stopping Minikube cluster..."
-  minikube stop >/dev/null
+  echo "Deleting the cluster..."
+  minikube delete -p $PROFILE_NAME >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 

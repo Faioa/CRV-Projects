@@ -1,6 +1,0 @@
-- **better README**
-- **PDF report**
-- **Persistent storage** yes BUT NOT on new clusters (kubectl delete -f ... or minikube delete means erasing everything) ( --mount --mount-string=${PWD}/volumes/:/tmp/volumes)
-- Dashboards grafana predefined + source predefined ?
-- Prometheus exporters on redis
-- project launched on minikube profile to be safer
