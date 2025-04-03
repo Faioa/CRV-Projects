@@ -1,6 +1,6 @@
 #!/bin/sh
 
-MINIKUBE_OPTIONS="--memory=4096 --cpus=2 --disable-driver-mounts"
+MINIKUBE_OPTIONS="--memory=4096 --cpus=4 --disable-driver-mounts"
 DEFAULT_DIR="$(dirname $0)"
 REQUIRED_FILES=("grafana/grafana.yaml"\
                 "grafana/grafana-config-template.yaml"\
@@ -37,7 +37,7 @@ DELETE_FILES=("grafana/grafana-config.yaml"\
               "redis-react/redis-react.yaml")
 
 help_cmd() {
-  echo -e "\033[1;34mUsage : $0 {start|stop|selete|dashboard|help} [project_dir]\033[0m"
+  echo -e "\033[1;34mUsage : $0 {start|stop|delete|dashboard|help} [project_dir]\033[0m"
   echo "       start - Starts the cluster and create the resources if they don't exist"
   echo "        stop - Stops the cluster without cleaning the resources"
   echo "        stop - Stops the cluster and deletes all resources"
@@ -47,7 +47,7 @@ help_cmd() {
   echo "               The default directory is \"$DEFAULT_DIR\" and it should follow the following architecture :"
   echo "                 _"
   echo "                 |- configs/ : The directory containing all the configuration files for Kubernetes"
-  echo "                 |-    state : The file describing the state of the cluster (0 = doesn't exist, 1 = running, 2 = stopped)"
+  echo "                 |-   .state : The file describing the state of the cluster (0 = doesn't exist, 1 = running, 2 = stopped)"
   exit 0
 }
 
@@ -312,10 +312,10 @@ command=$1
 
 if [[ -z $2 ]]; then
   config_dir="$DEFAULT_DIR/configs"
-  state_file="$DEFAULT_DIR/state"
+  state_file="$DEFAULT_DIR/.state"
 else
   config_dir="$2/configs"
-  state_file="$2/state"
+  state_file="$2/.state"
 fi
 
 case "$1" in
