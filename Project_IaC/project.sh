@@ -87,7 +87,7 @@ get_state() {
 
 start_cluster() {
   if [[ ! -f $state_file ]]; then
-    echo "0"  > $state_file
+    echo "0" > $state_file
     verify_config_dir "$config_dir"
   else
     tmp=$(get_state)
