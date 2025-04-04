@@ -1,11 +1,25 @@
 #!/bin/sh
 
-MINIKUBE_OPTIONS="--memory=4096 --cpus=4 --disable-driver-mounts --wait=all"
 PROFILE_NAME="crv-cluster-iac"
-DEFAULT_DIR="$(dirname $0)"
-REQUIRED_FILES=("grafana/grafana.yaml"\
-                "grafana/grafana-config-template.yaml"\
+DEFAULT_DIR="$(dirname $(realpath $0))"
+
+if [[ -z $2 ]]; then
+  CONFIG_DIR="$DEFAULT_DIR/configs"
+  STATE_FILE="$DEFAULT_DIR/.state"
+else
+  if [[ ! -d $(realpath $2) ]]; then
+    echo -e "\033[0;31mERROR: Directory \"$(realpath $2)\" doesn't exist.\033[0m" >&2
+    exit 1
+  fi
+  CONFIG_DIR="$(realpath $2)/configs"
+  STATE_FILE="$(realpath $2)/.state"
+fi
+
+MINIKUBE_OPTIONS="--memory=4096 --cpus=4 --disable-driver-mounts"
+REQUIRED_FILES=("monitoring-namespace.yaml"\
+                "grafana/grafana.yaml"\
                 "grafana/grafana-pvc.yaml"\
+                "grafana/grafana-config-template.yaml"\
                 "node-redis/node-redis.yaml"\
                 "node-redis/node-redis-autoscaler.yaml"\
                 "prometheus/prometheus-cluster-role.yaml"\
@@ -18,7 +32,11 @@ REQUIRED_FILES=("grafana/grafana.yaml"\
                 "redis-replica/redis-replica.yaml"\
                 "redis-replica/redis-replica-autoscaler.yaml"\
                 "ingress.yaml")
-USED_FILES=("grafana/grafana.yaml"\
+USED_FILES=("monitoring-namespace.yaml"\
+            "grafana/grafana-pvc.yaml"\
+            "prometheus/prometheus-pvc.yaml"\
+            "redis/redis-pvc.yaml"\
+            "grafana/grafana.yaml"\
             "grafana/grafana-config.yaml"\
             "node-redis/node-redis.yaml"\
             "node-redis/node-redis-autoscaler.yaml"\
@@ -29,10 +47,7 @@ USED_FILES=("grafana/grafana.yaml"\
             "redis-react/redis-react.yaml"\
             "redis-replica/redis-replica.yaml"\
             "redis-replica/redis-replica-autoscaler.yaml"\
-            "ingress.yaml"\
-            "grafana/grafana-pvc.yaml"\
-            "prometheus/prometheus-pvc.yaml"\
-            "redis/redis-pvc.yaml")
+            "ingress.yaml")
 DELETE_FILES=("grafana/grafana-config.yaml"\
               "prometheus/prometheus.yaml"\
               "redis-react/redis-react.yaml")
@@ -55,47 +70,49 @@ help_cmd() {
 check_command() {
   if [[ $? -ne 0 ]]; then
     echo -e "\033[0;31mERROR : stopping the script...\033[0m"
+    $1 >/dev/null 2>&1
     exit $?
   fi
 }
 
-verify_config_dir() {
-  local config_dir=$1
+verify_CONFIG_DIR() {
+  local CONFIG_DIR=$1
 
-  if [[ ! -d $config_dir ]]; then
-    echo -e "\033[0;31mERROR: Config directory \"$config_dir\" not found\033[0m" >&2
+  if [[ ! -d $CONFIG_DIR ]]; then
+    echo -e "\033[0;31mERROR: Config directory \"$CONFIG_DIR\" not found\033[0m" >&2
     exit 1
   fi
 
   for file in "${REQUIRED_FILES[@]}"; do
-    if [[ ! -f $config_dir/$file ]]; then
-      echo -e "\033[0;31mERROR: Required file \"$config_dir/$file\" not found\033[0m" >&2
+    if [[ ! -f $CONFIG_DIR/$file ]]; then
+      echo -e "\033[0;31mERROR: Required file \"$CONFIG_DIR/$file\" not found\033[0m" >&2
       exit 1
     fi
   done
 
-  echo -e "\033[1;34mUsing configuration from: \"$config_dir\"\033[0m"
+  echo -e "\033[1;34mUsing configuration from: \"$CONFIG_DIR\"\033[0m"
 }
 
 get_state() {
-  if [[ ! -f $state_file ]]; then
-    echo -e "\033[0;31mERROR: File describing the state of the cluster was not found. Make sure that the cluster was started at least one time and that the file is correctly located at \"${state_file}\".\033[0m" >&2
+  if [[ ! -f $STATE_FILE ]]; then
+    echo -e "\033[0;31mERROR: File describing the state of the cluster was not found. Make sure that the cluster was started at least one time and that the file is correctly located at \"${STATE_FILE}\".\033[0m" >&2
     exit 2
   fi
 
-  cat $state_file
+  cat $STATE_FILE
 }
 
 start_cluster() {
-  if [[ ! -f $state_file ]]; then
-    echo "0" > $state_file
-    verify_config_dir "$config_dir"
+  if [[ ! -f $STATE_FILE ]]; then
+    echo "0" > $STATE_FILE
+    verify_CONFIG_DIR "$CONFIG_DIR"
   else
     tmp=$(get_state)
     if [[ $tmp = "1" ]]; then
       echo -e "\033[0;31mERROR: A previous running instance of the cluster was found. Please delete it before starting another one.\033[0m" >&2
       exit 2
     fi
+    verify_CONFIG_DIR "$CONFIG_DIR"
   fi
 
   if [[ $tmp = "2" ]]; then
@@ -132,29 +149,27 @@ start_cluster() {
   check_command
   export INGRESS_CONTROLLER_PROT=$(echo $tmp_url | cut -f 1 -d ' ')
   export INGRESS_CONTROLLER_ADDR=$(echo $tmp_url | cut -f 2 -d ' ')
-  envsubst < "$config_dir/redis-react/redis-react-template.yaml" > "$config_dir/redis-react/redis-react.yaml"
-  envsubst < "$config_dir/grafana/grafana-config-template.yaml" > "$config_dir/grafana/grafana-config.yaml"
-  envsubst < "$config_dir/prometheus/prometheus-template.yaml" > "$config_dir/prometheus/prometheus.yaml"
+  envsubst < "$CONFIG_DIR/redis-react/redis-react-template.yaml" > "$CONFIG_DIR/redis-react/redis-react.yaml"
+  envsubst < "$CONFIG_DIR/grafana/grafana-config-template.yaml" > "$CONFIG_DIR/grafana/grafana-config.yaml"
+  envsubst < "$CONFIG_DIR/prometheus/prometheus-template.yaml" > "$CONFIG_DIR/prometheus/prometheus.yaml"
 
   if [[ $tmp != "2" ]]; then
     echo "Deploying services..."
-    kubectl create --context=$PROFILE_NAME namespace monitoring >/dev/null
-    check_command
     for file in "${USED_FILES[@]}"; do
-      kubectl apply --context=$PROFILE_NAME -f "$config_dir/$file" >/dev/null
+      kubectl apply --context=$PROFILE_NAME -f "$CONFIG_DIR/$file" >/dev/null
       check_command
     done
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
   echo "Waiting for pods to be ready..."
-  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis-react --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis --timeout=120s >/dev/null
   check_command
   kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis-replica --timeout=120s >/dev/null
   check_command
-  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis --timeout=120s >/dev/null
-  check_command
   kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=node-redis --timeout=120s >/dev/null
+  check_command
+  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis-react --timeout=120s >/dev/null
   check_command
   kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=ready pod -l app=grafana --timeout=120s >/dev/null
   check_command
@@ -163,10 +178,10 @@ start_cluster() {
   echo -e "\033[1;34mDone !\033[0m"
 
   echo "Updating the cluster's state..."
-  echo "1" > $state_file
+  echo "1" > $STATE_FILE
   echo -e "\033[1;34mDone !\033[0m"
 
-  echo -e "\033[1;32mCluster started successfully !\033[0m"
+  echo -e "\033[1;32mCluster $PROFILE_NAME started successfully !\033[0m"
   echo "Access URLs:"
   echo "• Frontend: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR"
   echo "• API: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/node-redis"
@@ -196,10 +211,10 @@ stop_cluster() {
   echo -e "\033[1;34mDone !\033[0m"
 
   echo "Updating the cluster's state..."
-  echo "2" > $state_file
+  echo "2" > $STATE_FILE
   echo -e "\033[1;34mDone !\033[0m"
 
-  echo -e "\033[1;32mCluster stopped successfully !\033[0m"
+  echo -e "\033[1;32mCluster $PROFILE_NAME stopped successfully !\033[0m"
 }
 
 delete_cluster() {
@@ -209,15 +224,15 @@ delete_cluster() {
   fi
 
   if [[ $tmp = "0" ]]; then
-    echo -e "\033[0;31mERROR: Cannot delete the cluster as it doesn't exist.\033[0m" >&2
+    echo -e "\033[0;31mERROR: Cannot delete the cluster $PROFILE_NAME as it doesn't exist.\033[0m" >&2
     exit 2
   fi
 
-  verify_config_dir "$config_dir"
+  verify_CONFIG_DIR "$CONFIG_DIR"
 
   echo "Deleting temporary configuration files..."
   for file in "${DELETE_FILES[@]}"; do
-    rm "$config_dir/$file" >/dev/null
+    rm "$CONFIG_DIR/$file" >/dev/null
     check_command
   done
   echo -e "\033[1;34mDone !\033[0m"
@@ -228,10 +243,10 @@ delete_cluster() {
   echo -e "\033[1;34mDone !\033[0m"
 
   echo "Updating the cluster's state..."
-  echo "0" > $state_file
+  echo "0" > $STATE_FILE
   echo -e "\033[1;34mDone !\033[0m"
 
-  echo -e "\033[1;32mMinikube cleaned and project deleted successfully !\033[0m"
+  echo -e "\033[1;32mMinikube cleaned and cluster $PROFILE_NAME deleted successfully !\033[0m"
 }
 
 dashboard() {
@@ -241,22 +256,12 @@ dashboard() {
   fi
 
   if [[ $tmp = "0" || $tmp = "2" ]]; then
-    echo -e "\033[0;31mERROR: Cannot access the dashboard as the cluster is not running.\033[0m" >&2
+    echo -e "\033[0;31mERROR: Cannot access the dashboard as the cluster $PROFILE_NAME is not running.\033[0m" >&2
     exit 2
   fi
 
-  minikube dashboard
+  minikube dashboard -p $PROFILE_NAME
 }
-
-command=$1
-
-if [[ -z $2 ]]; then
-  config_dir="$DEFAULT_DIR/configs"
-  state_file="$DEFAULT_DIR/.state"
-else
-  config_dir="$2/configs"
-  state_file="$2/.state"
-fi
 
 case "$1" in
   start)
@@ -275,7 +280,7 @@ case "$1" in
     help_cmd
     ;;
   *)
-    echo -e "\033[1;33mUsage : $0 {start|stop|delete|dashboard|help} [config_dir]\033[0m"
+    echo -e "\033[1;33mUsage : $0 {start|stop|delete|dashboard|help} [CONFIG_DIR]\033[0m"
     echo "Refer to \"$0 help\" for further details."
     exit 1
     ;;

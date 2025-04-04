@@ -1,10 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis-deployment
+  name: redis
   labels:
     app: redis
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: redis
@@ -16,6 +17,7 @@ spec:
       containers:
         - name: redis
           image: redis:7.2
+          imagePullPolicy: IfNotPresent
           ports:
           - containerPort: 6379
           command:

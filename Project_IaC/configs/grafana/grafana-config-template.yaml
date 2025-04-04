@@ -23,6 +23,6 @@ data:
     disable_login_form = false
 
     [auth.anonymous]
-    enabled = true
+    enabled = false
     org_name = Main Org.
     org_role = Viewer

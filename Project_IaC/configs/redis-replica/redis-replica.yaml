@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis-replica-deployment
+  name: redis-replica
   labels:
     app: redis-replica
 spec:
@@ -17,6 +17,7 @@ spec:
       containers:
         - name: redis-replica
           image: redis:7.2
+          imagePullPolicy: IfNotPresent
           ports:
           - containerPort: 6379
           command:

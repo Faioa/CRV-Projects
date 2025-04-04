@@ -4,6 +4,7 @@ metadata:
   name: prometheus
   namespace: monitoring
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: prometheus
@@ -45,6 +46,10 @@ kind: Service
 metadata:
   name: prometheus
   namespace: monitoring
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "80"
+    prometheus.io/path: "/prometheus/metrics"
 spec:
   selector:
     app: prometheus
