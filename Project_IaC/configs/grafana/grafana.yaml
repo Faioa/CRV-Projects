@@ -1,7 +1,7 @@
 #https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/
 
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   labels:
     app: grafana
@@ -12,6 +12,7 @@ spec:
   selector:
     matchLabels:
       app: grafana
+  podManagementPolicy: Parallel
   template:
     metadata:
       labels:
@@ -53,20 +54,26 @@ spec:
               memory: 750Mi
           volumeMounts:
             - mountPath: /var/lib/grafana
-              name: grafana-pv
+              name: grafana
             - mountPath: /etc/grafana/grafana.ini
               name: grafana-config
               subPath: grafana.ini
       volumes:
-        - name: grafana-pv
-          persistentVolumeClaim:
-            claimName: grafana-pvc
         - name: grafana-config
           configMap:
             name: grafana-config
             items:
             - key: grafana.ini
               path: grafana.ini
+  volumeClaimTemplates:
+  - metadata:
+      name: grafana
+    spec:
+      accessModes: [ "ReadWriteOncePod" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi
 
 ---
 apiVersion: v1

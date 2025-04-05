@@ -1,21 +1,24 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: prometheus
+  name: node-exporter
   namespace: monitoring
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: prometheus
+  name: node-exporter
 rules:
 - apiGroups: [""]
-  resources: ["nodes", "nodes/metrics", "pods", "services", "endpoints", "namespaces"]
-  verbs: ["get", "watch", "list"]
+  resources: ["nodes", "nodes/proxy", "nodes/metrics", "services", "endpoints", "pods", "namespace"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes/*"]
+  verbs: ["get", "list", "watch"]
 - nonResourceURLs: ["/metrics"]
   verbs: ["get"]
 
@@ -23,12 +26,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: prometheus
+  name: node-exporter
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: prometheus
+  name: node-exporter
 subjects:
 - kind: ServiceAccount
-  name: prometheus
+  name: node-exporter
   namespace: monitoring

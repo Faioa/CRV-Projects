@@ -1,10 +1,7 @@
 # Urgent
 - **better README**
 - **PDF report**
-- Prometheus exporters on redis + ingress
-- autoscale ingress + node + redis-replicas
-- functions in readme + delete-volumes
+- functions in readme
 
 # Bonus
-- Prometheus exporters on redis + ingress
-- autoscale ingress controller
+- autoscale (calculs)

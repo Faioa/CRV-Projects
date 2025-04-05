@@ -10,6 +10,8 @@ Make sure that all the commands are available on the **$PATH**.\
 \
 **Warning**\
 If the start command fails because of a timeout during the starting phase of the pods, it might be because your Internet connexion is not good enough and the pods lost too much time pulling the images. You can check the health of the pods with the following command :
+
+
 ```
 $ kubectl --context=crv-cluster-iac get pods -A 
 ```

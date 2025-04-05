@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: prometheus
   namespace: monitoring
@@ -8,6 +8,7 @@ spec:
   selector:
     matchLabels:
       app: prometheus
+  podManagementPolicy: Parallel
   template:
     metadata:
       labels:
@@ -30,16 +31,21 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /etc/prometheus
-        - name: prometheus-pv
+        - name: prometheus
           mountPath: /prometheus
       volumes:
       - name: config
         configMap:
           name: prometheus-config
-      - name: prometheus-pv
-        persistentVolumeClaim:
-            claimName: prometheus-pvc
-
+  volumeClaimTemplates:
+  - metadata:
+      name: prometheus
+    spec:
+      accessModes: [ "ReadWriteOncePod" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -56,10 +62,3 @@ spec:
   ports:
   - port: 80
     targetPort: 9090
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: prometheus
-  namespace: monitoring

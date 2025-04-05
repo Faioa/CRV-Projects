@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: redis
   labels:
@@ -9,10 +9,14 @@ spec:
   selector:
     matchLabels:
       app: redis
+  podManagementPolicy: Parallel
   template:
     metadata:
       labels:
         app: redis
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
     spec:
       containers:
         - name: redis
@@ -37,12 +41,37 @@ spec:
             - "--appendonly"
             - "no"
           volumeMounts:
-          - name: redis-pv
+          - name: redis
             mountPath: /data
-      volumes:
-      - name: redis-pv
-        persistentVolumeClaim:
-          claimName: redis-pvc
+        - name: redis-exporter
+          image: faioa/crv:olivier006_redis_exporter
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 9121
+          env:
+          - name: REDIS_ADDR
+            value: "redis://localhost:6379"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9121
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9121
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+  volumeClaimTemplates:
+  - metadata:
+      name: redis
+    spec:
+      accessModes: [ "ReadWriteOncePod" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi
 
 ---
 apiVersion: v1
@@ -53,5 +82,9 @@ spec:
   selector:
     app: redis
   ports:
-  - port: 6379
+  - name: redis
+    port: 6379
     targetPort: 6379
+  - name: metrics
+    port: 9121
+    targetPort: 9121

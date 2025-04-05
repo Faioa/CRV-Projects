@@ -18,24 +18,21 @@ fi
 MINIKUBE_OPTIONS="--memory=4096 --cpus=4 --disable-driver-mounts"
 REQUIRED_FILES=("monitoring-namespace.yaml"\
                 "grafana/grafana.yaml"\
-                "grafana/grafana-pvc.yaml"\
                 "grafana/grafana-config-template.yaml"\
                 "node-redis/node-redis.yaml"\
                 "node-redis/node-redis-autoscaler.yaml"\
                 "prometheus/prometheus-cluster-role.yaml"\
                 "prometheus/prometheus-config.yaml"\
-                "prometheus/prometheus-pvc.yaml"\
                 "prometheus/prometheus-template.yaml"\
                 "redis/redis.yaml"\
-                "redis/redis-pvc.yaml"\
                 "redis-react/redis-react-template.yaml"\
                 "redis-replica/redis-replica.yaml"\
                 "redis-replica/redis-replica-autoscaler.yaml"\
-                "ingress.yaml")
+                "ingress.yaml"\
+                "ingress-controller-autoscaler.yaml"\
+                "node-exporter/node-exporter-cluster-role.yaml"\
+                "node-exporter/node-exporter.yaml")
 USED_FILES=("monitoring-namespace.yaml"\
-            "grafana/grafana-pvc.yaml"\
-            "prometheus/prometheus-pvc.yaml"\
-            "redis/redis-pvc.yaml"\
             "grafana/grafana.yaml"\
             "grafana/grafana-config.yaml"\
             "node-redis/node-redis.yaml"\
@@ -47,7 +44,10 @@ USED_FILES=("monitoring-namespace.yaml"\
             "redis-react/redis-react.yaml"\
             "redis-replica/redis-replica.yaml"\
             "redis-replica/redis-replica-autoscaler.yaml"\
-            "ingress.yaml")
+            "ingress.yaml"\
+            "ingress-controller-autoscaler.yaml"\
+            "node-exporter/node-exporter-cluster-role.yaml"\
+            "node-exporter/node-exporter.yaml")
 DELETE_FILES=("grafana/grafana-config.yaml"\
               "prometheus/prometheus.yaml"\
               "redis-react/redis-react.yaml")
@@ -129,21 +129,41 @@ start_cluster() {
     echo "Enabling Minikube addons..."
     minikube -p $PROFILE_NAME addons enable metrics-server >/dev/null
     check_command
-    minikube -p $PROFILE_NAME addons enable ingress >/dev/null
-    check_command
     minikube -p $PROFILE_NAME addons enable dashboard >/dev/null
+    check_command
+    minikube -p $PROFILE_NAME addons enable ingress >/dev/null
     check_command
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
   echo "Waiting for ingress controller to be ready..."
-  kubectl wait --context=$PROFILE_NAME --namespace ingress-nginx \
+  kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
     --for=condition=ready pod \
     --selector=app.kubernetes.io/component=controller \
     --timeout=120s >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 
+  if [[ $tmp != "2" ]]; then
+    echo "Adding annotations for Prometheus to scrap the ingress controller pods..."
+    kubectl patch --context=$PROFILE_NAME deployment ingress-nginx-controller -n ingress-nginx --patch '
+      spec:
+        template:
+          metadata:
+            annotations:
+              prometheus.io/scrape: "true"
+              prometheus.io/port: "10254"
+      ' >/dev/null
+    check_command
+    kubectl rollout --context=$PROFILE_NAME restart deployment ingress-nginx-controller -n ingress-nginx >/dev/null
+    check_command
+    kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=controller \
+      --timeout=120s >/dev/null
+    check_command
+    echo -e "\033[1;34mDone !\033[0m"
+  fi
 
   local tmp_url=$(minikube -p $PROFILE_NAME service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
   check_command
@@ -187,6 +207,7 @@ start_cluster() {
   echo "• API: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/node-redis"
   echo "• Grafana : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/grafana"
   echo "• Prometheus : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/prometheus"
+  exit 0
 }
 
 stop_cluster() {
@@ -215,6 +236,7 @@ stop_cluster() {
   echo -e "\033[1;34mDone !\033[0m"
 
   echo -e "\033[1;32mCluster $PROFILE_NAME stopped successfully !\033[0m"
+  exit 0
 }
 
 delete_cluster() {
@@ -247,6 +269,7 @@ delete_cluster() {
   echo -e "\033[1;34mDone !\033[0m"
 
   echo -e "\033[1;32mMinikube cleaned and cluster $PROFILE_NAME deleted successfully !\033[0m"
+  exit 0
 }
 
 dashboard() {
@@ -261,6 +284,7 @@ dashboard() {
   fi
 
   minikube dashboard -p $PROFILE_NAME
+  exit 0
 }
 
 case "$1" in
