@@ -15,7 +15,7 @@ else
   STATE_FILE="$(realpath $2)/.state"
 fi
 
-MINIKUBE_OPTIONS="--memory=4096 --cpus=4 --disable-driver-mounts"
+MINIKUBE_OPTIONS="--driver=docker --memory=4096 --cpus=4 --disable-driver-mounts"
 REQUIRED_FILES=("monitoring-namespace.yaml"\
                 "grafana/grafana.yaml"\
                 "grafana/grafana-config-template.yaml"\
@@ -53,16 +53,20 @@ DELETE_FILES=("grafana/grafana-config.yaml"\
               "redis-react/redis-react.yaml")
 
 help_cmd() {
-  echo -e "\033[1;34mUsage : $0 {start|stop|delete|dashboard|help} [project_dir]\033[0m"
-  echo "       start - Starts the cluster and create the resources if they don't exist"
-  echo "        stop - Stops the cluster without cleaning the resources"
-  echo "        stop - Stops the cluster and deletes all resources"
-  echo "   dashboard - Starts Minikube's dashboard, display the URL and opens it in your browser"
+  echo -e "\033[1;34mUsage : $0 {start|stop|delete|update_state|force_delete|dashboard|help} [project_dir]\033[0m"
+  echo "       start - Starts the cluster and create the resources if they don't exist."
+  echo "               Also restarts the cluster if it was previously stopped."
+  echo "        stop - Stops the cluster without cleaning the resources."
+  echo "      delete - Deletes the cluster and all the generated resources files."
+  echo "update_state - Debugging command that tries to update the cluster's state if it doesn't seem consistent for the user."
+  echo "force_delete - Debugging command that forces the deletion of the cluster."
+  echo "               It disregards the current state of the cluster and deletes any generated files."
+  echo "   dashboard - Starts Minikube's dashboard associated with the cluster, display the URL and opens it in your browser."
   echo "        help - Displays details on the usage of this script"
-  echo " project_dir - Directory containing the necessary files and directories for the cluster to be launched successfully"
-  echo "               The default directory is \"$DEFAULT_DIR\" and it should follow the following architecture :"
+  echo " project_dir - Directory containing the necessary files and directories for the cluster to be launched successfully."
+  echo "               The default directory is \"$DEFAULT_DIR\" and it should have the following architecture :"
   echo "                 _"
-  echo "                 |- configs/ : The directory containing all the configuration files for Kubernetes"
+  echo "                 |- configs/ : The directory containing all the required configuration files for Kubernetes"
   echo "                 |-   .state : The file describing the state of the cluster (0 = doesn't exist, 1 = running, 2 = stopped)"
   exit 0
 }
@@ -165,7 +169,7 @@ start_cluster() {
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
-  local tmp_url=$(minikube -p $PROFILE_NAME service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
+  tmp_url=$(minikube -p $PROFILE_NAME service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
   check_command
   export INGRESS_CONTROLLER_PROT=$(echo $tmp_url | cut -f 1 -d ' ')
   export INGRESS_CONTROLLER_ADDR=$(echo $tmp_url | cut -f 2 -d ' ')
@@ -272,13 +276,89 @@ delete_cluster() {
   exit 0
 }
 
+update_state() {
+  curr_state=$(get_state)
+  tmp=$(minikube profile list | grep "$PROFILE_NAME" | tr -d " ")
+  check_command
+
+  if [[ -z $tmp ]]; then
+    if [[ $curr_state != "0" ]]; then
+      echo -e "\033[1;35mThe cluster $PROFILE_NAME doesn't not exist.\033[0m Updating the cluster's state..."
+      echo "0" > $STATE_FILE
+      echo -e "\033[1;32mCluster state updated successfully !\033[0m"
+    else
+      echo "The cluster state was already correct : the cluster $PROFILE_NAME doesn't exist."
+    fi
+  else
+    state=$(echo $tmp | cut -d "|" -f 8)
+    if [[ $state = "Stopped" ]]; then
+      if [[ $curr_state != "2" ]]; then
+        echo -e "\033[1;35mThe cluster $PROFILE_NAME is stopped.\033[0m Updating the cluster's state..."
+        echo "2" > $STATE_FILE
+        echo -e "\033[1;32mCluster state updated successfully !\033[0m"
+      else
+        echo "The cluster state was already correct : the cluster $PROFILE_NAME is stopped."
+      fi
+    else
+      if [[ $state = "Starting" ]]; then
+        echo "The cluster $PROFILE_NAME is still starting, please wait for a bit before reusing this command."
+        echo "Alternatively, you can use the command \"$0 force-delete\" to force the deletion of the cluster."
+      else
+        if [[ $state = "OK" ]]; then
+          if [[ $curr_state != "1" ]]; then
+            echo -e "\033[1;35mThe cluster $PROFILE_NAME is running.\033[0m Updating the cluster's state..."
+            echo "1" > $STATE_FILE
+            echo -e "\033[1;32mCluster state updated successfully !\033[0m"
+          else
+            echo "The cluster state was already correct : the cluster $PROFILE_NAME is running."
+          fi
+          tmp=$(minikube -p $PROFILE_NAME service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
+          check_command
+          INGRESS_CONTROLLER_PROT=$(echo $tmp | cut -f 1 -d ' ')
+          INGRESS_CONTROLLER_ADDR=$(echo $tmp | cut -f 2 -d ' ')
+          echo "Access URLs:"
+          echo "• Frontend: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR"
+          echo "• API: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/node-redis"
+          echo "• Grafana : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/grafana"
+          echo "• Prometheus : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/prometheus"
+        else
+          echo "\033[0;31mERROR: This script cannot infer the state of the cluster. Please run further investigation with Minikube's and Kubernetes' commands.\033[0m" >&2
+          echo "Alternatively, you can use the command \"$0 force-delete\" to force the deletion of the cluster." >&2
+          echo "Defaulting the cluster's state to \"Inexistant\" for the time being..." >&2
+          echo "0" > $STATE_FILE
+          echo -e "\033[1;34mDone !\033[0m" >&2
+          exit 3
+        fi
+      fi
+    fi
+  fi
+  exit 0
+}
+
+force_delete() {
+  verify_CONFIG_DIR "$CONFIG_DIR" >/dev/null
+  echo "Deleting the cluster..."
+  for file in "${DELETE_FILES[@]}"; do
+    rm -f "$CONFIG_DIR/$file" >/dev/null 2>&1
+  done
+  minikube delete -p $PROFILE_NAME >/dev/null 2>&1
+  echo -e "\033[1;34mDone !\033[0m"
+
+  echo "Updating the cluster's state..."
+  echo "0" > $STATE_FILE
+  echo -e "\033[1;34mDone !\033[0m"
+
+  echo -e "\033[1;32mMinikube cleaned and cluster $PROFILE_NAME deleted forcefully !\033[0m"
+  exit 0
+}
+
 dashboard() {
   tmp=$(get_state)
   if [[ $? -ne 0 ]]; then
     exit $?
   fi
 
-  if [[ $tmp = "0" || $tmp = "2" ]]; then
+  if [[ $tmp != "1" ]]; then
     echo -e "\033[0;31mERROR: Cannot access the dashboard as the cluster $PROFILE_NAME is not running.\033[0m" >&2
     exit 2
   fi
@@ -297,6 +377,12 @@ case "$1" in
   delete)
     delete_cluster
     ;;
+  update_state)
+    update_state
+    ;;
+  force_delete)
+    force_delete
+    ;;
   dashboard)
     dashboard
     ;;
@@ -304,7 +390,7 @@ case "$1" in
     help_cmd
     ;;
   *)
-    echo -e "\033[1;33mUsage : $0 {start|stop|delete|dashboard|help} [CONFIG_DIR]\033[0m"
+    echo -e "\033[1;33mUsage : $0 {start|stop|delete|update_state|force_delete|dashboard|help} [CONFIG_DIR]\033[0m"
     echo "Refer to \"$0 help\" for further details."
     exit 1
     ;;

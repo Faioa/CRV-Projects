@@ -17,7 +17,7 @@ $ kubectl --context=crv-cluster-iac get pods -A
 ```
 If everything seems fine, you can run the following command to force the state of the cluster to *Running* (or you can change it manually...) :
 ```
-$ ./project.sh force-state
+$ ./project.sh update-state
 ```
 The installation might take a few minutes, the script will keep you informed of the major milestones of this process.\
 If you break the consistency of the cluster, run the following command to reset it forcefully :
