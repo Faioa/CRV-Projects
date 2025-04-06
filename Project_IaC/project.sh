@@ -15,7 +15,7 @@ else
   STATE_FILE="$(realpath $2)/.state"
 fi
 
-MINIKUBE_OPTIONS="--driver=docker --memory=4096 --cpus=4 --disable-driver-mounts"
+MINIKUBE_OPTIONS="--driver=docker --memory=6144 --cpus=4 --disable-driver-mounts"
 REQUIRED_FILES=("monitoring-namespace.yaml"\
                 "grafana/grafana.yaml"\
                 "grafana/grafana-config-template.yaml"\

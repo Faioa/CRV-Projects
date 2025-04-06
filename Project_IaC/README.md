@@ -13,6 +13,9 @@ This project was made for the CRV class at Sorbonne Université. We are using *M
 
 Moreover, we chose to use an Ingress Controller instead of making all of our services as LoadBalancers or NodePorts to have a project closer to a real production infrastructure : one entry point as a LoadBalancer that distributes to the right services.
 
+## Requirements
+The underlying Minikube cluster requires 6 Gigabytes of memory and 4 hearts of CPU.
+
 ## Versions
 If the project doesn't work immediatly on your machine, ensure that you have a relatively good Internet connexion and that the softwares version are not inferior to the followings :
 - Kubernetes :
