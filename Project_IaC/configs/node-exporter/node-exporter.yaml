@@ -55,6 +55,13 @@ spec:
       - name: root
         hostPath:
           path: /
+      resources:
+          requests:
+            cpu: 50m
+            memory: 75Mi
+          limits:
+            cpu: 100m
+            memory: 150Mi
 ---
 apiVersion: v1
 kind: Service

@@ -140,16 +140,9 @@ start_cluster() {
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
-  echo "Waiting for ingress controller to be ready..."
-  kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
-    --for=condition=ready pod \
-    --selector=app.kubernetes.io/component=controller \
-    --timeout=120s >/dev/null
-  check_command
-  echo -e "\033[1;34mDone !\033[0m"
-
   if [[ $tmp != "2" ]]; then
     echo "Adding annotations for Prometheus to scrap the ingress controller pods..."
+    prev_replicaset=$(kubectl get replicasets -n ingress-nginx | tail -n 1 | cut -d " " -f 1)
     kubectl patch --context=$PROFILE_NAME deployment ingress-nginx-controller -n ingress-nginx --patch '
       spec:
         template:
@@ -159,15 +152,18 @@ start_cluster() {
               prometheus.io/port: "10254"
       ' >/dev/null
     check_command
-    kubectl rollout --context=$PROFILE_NAME restart deployment ingress-nginx-controller -n ingress-nginx >/dev/null
-    check_command
-    kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
-      --for=condition=ready pod \
-      --selector=app.kubernetes.io/component=controller \
-      --timeout=120s >/dev/null
+    kubectl delete --context=$PROFILE_NAME replicasets.apps $prev_replicaset -n ingress-nginx >/dev/null
     check_command
     echo -e "\033[1;34mDone !\033[0m"
   fi
+
+  echo "Waiting for ingress controller to be ready..."
+  kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
+    --for=condition=ready pod \
+    --selector=app.kubernetes.io/component=controller \
+    --timeout=120s >/dev/null
+  check_command
+  echo -e "\033[1;34mDone !\033[0m"
 
   tmp_url=$(minikube -p $PROFILE_NAME service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
   check_command
@@ -282,7 +278,7 @@ update_state() {
   else
     curr_state=$(get_state)
   fi
-  tmp=$(minikube profile list | grep "$PROFILE_NAME" | tr -d " ")
+  tmp=$(minikube profile list 2>/dev/null | grep "$PROFILE_NAME" | tr -d " ")
   check_command
 
   if [[ -z $tmp ]]; then

@@ -38,7 +38,7 @@ Nothing easier than launching the following command :
 ```
 $ ./project.sh start
 ```
-It might take a long time depending on you Internet connexion. In our case, it took almost 2 minutes and 30 seconds. Don't worry tho, the script will update you about the major milestones. At the end, you will get a list of the different endpoints you can contact to use the services. You can copy Prometheus' one to add a source to Grafana.\
+It might take a long time depending on you Internet connexion. In our case, it took almost 2 minutes. Although, the script will update you about the major milestones. At the end, you will get a list of the different endpoints you can contact to use the services. You can copy Prometheus' one to add a source to Grafana.\
 Also, you can use this command to restart the cluster if it was previously stopped. It will take less time to start and you will still get the list of endpoints at the end.
 
 ### Debugging any timeout issues

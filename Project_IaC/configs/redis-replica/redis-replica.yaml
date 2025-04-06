@@ -5,7 +5,7 @@ metadata:
   labels:
     app: redis-replica
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: redis-replica
@@ -31,6 +31,13 @@ spec:
             - "6379"
             - "--protected-mode"
             - "no"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 150Mi
+            limits:
+              cpu: 200m
+              memory: 300Mi
         - name: redis-replica-exporter
           image: faioa/crv:olivier006_redis_exporter
           imagePullPolicy: IfNotPresent
@@ -39,6 +46,13 @@ spec:
           env:
           - name: REDIS_ADDR
             value: "redis://localhost:6379"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+            limits:
+              cpu: 50m
+              memory: 100Mi
 
 ---
 apiVersion: v1

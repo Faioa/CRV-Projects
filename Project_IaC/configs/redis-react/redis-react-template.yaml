@@ -23,6 +23,13 @@ spec:
           env:
           - name: "API_URL"
             value: "${INGRESS_CONTROLLER_PROT}://${INGRESS_CONTROLLER_ADDR}/node-redis"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 200m
+              memory: 300Mi
 
 ---
 apiVersion: v1
