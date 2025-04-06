@@ -258,7 +258,7 @@ delete_cluster() {
 
   echo "Deleting temporary configuration files..."
   for file in "${DELETE_FILES[@]}"; do
-    rm "$CONFIG_DIR/$file" >/dev/null
+    rm -f "$CONFIG_DIR/$file" >/dev/null
     check_command
   done
   echo -e "\033[1;34mDone !\033[0m"
