@@ -277,7 +277,11 @@ delete_cluster() {
 }
 
 update_state() {
-  curr_state=$(get_state)
+  if [[ ! -f $STATE_FILE ]]; then
+    curr_state=""
+  else
+    curr_state=$(get_state)
+  fi
   tmp=$(minikube profile list | grep "$PROFILE_NAME" | tr -d " ")
   check_command
 
