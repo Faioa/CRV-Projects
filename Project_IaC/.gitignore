@@ -1,1 +1,4 @@
 .state
+configs/grafana/grafana-config.yaml
+configs/prometheus/prometheus.yaml
+configs/redis-react/redis-react.yaml
