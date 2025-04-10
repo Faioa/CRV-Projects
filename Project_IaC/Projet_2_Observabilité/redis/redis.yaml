@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: redis
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+          command:
+            - "redis-server"
+          args:
+            - "--protected-mode"
+            - "no"
+      n'est pas nécessaire de recourir à la persistance ou à des optimisations complexes dans le cadre des tests de performances
+      simplifier et de se concentrer sur les metrics.
+            ===== delete =====
+            - "--lazyfree-lazy-eviction"
+            - "no"
+            - "--lazyfree-lazy-expire"
+            - "no"
+            - "--lazyfree-lazy-server-del"
+            - "no"
+            - "--save"
+            - "300"
+            - "1"
+            - "--appendonly"
+            - "no"
+            ====================
+          volumeMounts:
+            - name: redis
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 150m
+              memory: 256Mi
+            limits:         # limits AWS EC2 (1 CPU = 1000m, 2GB RAM)
+              cpu: 500m
+              memory: 1Gi
+        - name: redis-exporter
+          image: faioa/crv:olivier006_redis_exporter   # nouveau nom image
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9121
+          env:
+            - name: REDIS_ADDR
+              value: "redis://localhost:6379"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9121
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9121
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+            limits:
+              cpu: 50m
+              memory: 100Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: redis
+      spec:
+        accessModes: ["ReadWriteOncePod"]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+    - name: metrics
+      port: 9121
+      targetPort: 9121

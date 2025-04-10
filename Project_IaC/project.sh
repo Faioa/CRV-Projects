@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PROFILE_NAME="crv-cluster-iac"
+PROFILE_NAME="crv-cluster-observability"
 DEFAULT_DIR="$(dirname $(realpath $0))"
 
 if [[ -z $2 ]]; then
@@ -15,7 +15,7 @@ else
   STATE_FILE="$(realpath $2)/.state"
 fi
 
-MINIKUBE_OPTIONS="--driver=docker --memory=6144 --cpus=4 --disable-driver-mounts"
+MINIKUBE_OPTIONS="--driver=docker --memory=2048 --cpus=1 --disable-driver-mounts" # limits AWS EC2 (1 CPU = 1000m, 2GB RAM)
 REQUIRED_FILES=("monitoring-namespace.yaml"\
                 "grafana/grafana.yaml"\
                 "grafana/grafana-config-template.yaml"\
