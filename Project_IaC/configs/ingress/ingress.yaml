@@ -6,6 +6,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
+  ingressClassName: nginx
   rules:
   - http:
       paths:
@@ -31,6 +32,7 @@ metadata:
   name: prometheus-ingress
   namespace: monitoring
 spec:
+  ingressClassName: nginx
   rules:
   - http:
       paths:
@@ -56,6 +58,7 @@ metadata:
     nginx.ingress.kubernetes.io/session-cookie-change-on-failure: "true"
     nginx.ingress.kubernetes.io/session-cookie-conditional-samesite-none: "true"
 spec:
+  ingressClassName: nginx
   rules:
   - http:
       paths:

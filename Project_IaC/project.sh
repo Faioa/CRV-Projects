@@ -28,11 +28,13 @@ REQUIRED_FILES=("monitoring-namespace.yaml"\
                 "redis-react/redis-react-template.yaml"\
                 "redis-replica/redis-replica.yaml"\
                 "redis-replica/redis-replica-autoscaler.yaml"\
-                "ingress.yaml"\
-                "ingress-controller-autoscaler.yaml"\
+                "ingress/ingress.yaml"\
+                "ingress/ingress-controller-autoscaler.yaml"\
+                "ingress/ingress-controller.yaml"\
                 "node-exporter/node-exporter-cluster-role.yaml"\
                 "node-exporter/node-exporter.yaml")
-USED_FILES=("monitoring-namespace.yaml"\
+USED_FILES=("ingress/ingress-controller.yaml"\
+            "monitoring-namespace.yaml"\
             "grafana/grafana.yaml"\
             "grafana/grafana-config.yaml"\
             "node-redis/node-redis.yaml"\
@@ -44,8 +46,8 @@ USED_FILES=("monitoring-namespace.yaml"\
             "redis-react/redis-react.yaml"\
             "redis-replica/redis-replica.yaml"\
             "redis-replica/redis-replica-autoscaler.yaml"\
-            "ingress.yaml"\
-            "ingress-controller-autoscaler.yaml"\
+            "ingress/ingress.yaml"\
+            "ingress/ingress-controller-autoscaler.yaml"\
             "node-exporter/node-exporter-cluster-role.yaml"\
             "node-exporter/node-exporter.yaml")
 DELETE_FILES=("grafana/grafana-config.yaml"\
@@ -135,40 +137,56 @@ start_cluster() {
     check_command
     minikube -p $PROFILE_NAME addons enable dashboard >/dev/null
     check_command
-    minikube -p $PROFILE_NAME addons enable ingress >/dev/null
+    minikube -p $PROFILE_NAME addons enable metallb >/dev/null
     check_command
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
   if [[ $tmp != "2" ]]; then
-    echo "Adding annotations for Prometheus to scrap the ingress controller pods..."
-    prev_replicaset=$(kubectl get replicasets -n ingress-nginx | tail -n 1 | cut -d " " -f 1)
-    kubectl patch --context=$PROFILE_NAME deployment ingress-nginx-controller -n ingress-nginx --patch '
-      spec:
-        template:
-          metadata:
-            annotations:
-              prometheus.io/scrape: "true"
-              prometheus.io/port: "10254"
-      ' >/dev/null
+    echo "Configuring addon metallb..."
+    export IP_BASE=$(minikube ip -p $PROFILE_NAME | cut -d"." -f1-3)
     check_command
-    kubectl delete --context=$PROFILE_NAME replicasets.apps $prev_replicaset -n ingress-nginx >/dev/null
-    check_command
+      cat <<EOF | kubectl apply --context=$PROFILE_NAME -f - >/dev/null
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+      - ${IP_BASE}.200-${IP_BASE}.254
+EOF
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
-  echo "Waiting for ingress controller to be ready..."
-  kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
-    --for=condition=ready pod \
-    --selector=app.kubernetes.io/component=controller \
-    --timeout=120s >/dev/null
+  echo "Deploying Ingress Controller..."
+  kubectl apply --context=$PROFILE_NAME -f "$CONFIG_DIR/ingress/ingress-controller.yaml" >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 
-  tmp_url=$(minikube -p $PROFILE_NAME service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
+  sleep 2
+
+  echo "Waiting for Ingress Controller to be ready..."
+  kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
+    --for=condition=ready pod \
+    --selector=app.kubernetes.io/component=controller \
+    --timeout=180s >/dev/null
   check_command
-  export INGRESS_CONTROLLER_PROT=$(echo $tmp_url | cut -f 1 -d ' ')
+  echo -e "\033[1;34mDone !\033[0m"
+
+  export INGRESS_CONTROLLER_PROT="http"
+  tmp_url=$(kubectl get --context=$PROFILE_NAME service -n ingress-nginx | grep -E "(ingress-nginx-controller).*(LoadBalancer)" | tr -s " " | cut -d " " -f 4)
+  check_command
   export INGRESS_CONTROLLER_ADDR=$(echo $tmp_url | cut -f 2 -d ' ')
+  while [[ $INGRESS_CONTROLLER_ADDR = "<pending>" ]]; do
+    tmp_url=$(kubectl get --context=$PROFILE_NAME service -n ingress-nginx | grep -E "(ingress-nginx-controller).*(LoadBalancer)" | tr -s " " | cut -d " " -f 4)
+    check_command
+    export INGRESS_CONTROLLER_ADDR=$(echo $tmp_url | cut -f 2 -d ' ')
+  done
   envsubst < "$CONFIG_DIR/redis-react/redis-react-template.yaml" > "$CONFIG_DIR/redis-react/redis-react.yaml"
   envsubst < "$CONFIG_DIR/grafana/grafana-config-template.yaml" > "$CONFIG_DIR/grafana/grafana-config.yaml"
   envsubst < "$CONFIG_DIR/prometheus/prometheus-template.yaml" > "$CONFIG_DIR/prometheus/prometheus.yaml"
@@ -176,13 +194,15 @@ start_cluster() {
   if [[ $tmp != "2" ]]; then
     echo "Deploying services..."
     for file in "${USED_FILES[@]}"; do
-      kubectl apply --context=$PROFILE_NAME -f "$CONFIG_DIR/$file" >/dev/null
-      check_command
+      if [[ $file != "ingress/ingress-controller.yaml" ]]; then
+        kubectl apply --context=$PROFILE_NAME -f "$CONFIG_DIR/$file" >/dev/null
+        check_command
+      fi
     done
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
-  echo "Waiting for pods to be ready..."
+  echo "Waiting for Pods to be ready..."
   kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis --timeout=120s >/dev/null
   check_command
   kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis-replica --timeout=120s >/dev/null
@@ -312,10 +332,10 @@ update_state() {
           else
             echo "The cluster state was already correct : the cluster $PROFILE_NAME is running."
           fi
-          tmp=$(minikube -p $PROFILE_NAME service -n ingress-nginx ingress-nginx-controller --url | head -n 1 | sed -E 's|^([a-zA-Z]+)://([^\/?]+).*|\1 \2|')
+          tmp_url=$(kubectl get --context=$PROFILE_NAME service -n ingress-nginx | grep -E "(ingress-nginx-controller).*(LoadBalancer)" | tr -s " " | cut -d " " -f 4)
           check_command
-          INGRESS_CONTROLLER_PROT=$(echo $tmp | cut -f 1 -d ' ')
-          INGRESS_CONTROLLER_ADDR=$(echo $tmp | cut -f 2 -d ' ')
+          export INGRESS_CONTROLLER_PROT="http"
+          export INGRESS_CONTROLLER_ADDR=$(echo $tmp_url | cut -f 2 -d ' ')
           echo "Access URLs:"
           echo "• Frontend: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR"
           echo "• API: $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/node-redis"
