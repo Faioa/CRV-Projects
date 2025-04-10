@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-replica
+  labels:
+    app: redis-replica
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-replica
+  template:
+    metadata:
+      labels:
+        app: redis-replica
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+    spec:
+      containers:
+        - name: redis-replica
+          image: redis:7.2
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 6379
+          command:
+            - "redis-server"
+          args:
+            - "--replicaof"
+            - "redis.default.svc.cluster.local"
+            - "6379"
+            - "--protected-mode"
+            - "no"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 150Mi
+            limits: # limits AWS EC2 (1 CPU = 1000m, 2GB RAM)
+              cpu: 500m
+              memory: 1Gi
+        - name: redis-replica-exporter
+          image: faioa/crv:olivier006_redis_exporter
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 9121
+          env:
+          - name: REDIS_ADDR
+            value: "redis://localhost:6379"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+            limits:
+              cpu: 50m
+              memory: 100Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-replica
+spec:
+  selector:
+    app: redis-replica
+  ports:
+  - name: redis-replica
+    port: 6379
+    targetPort: 6379
+  - name: metrics
+    port: 9121
+    targetPort: 9121

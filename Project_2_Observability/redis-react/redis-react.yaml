@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-react
+  labels:
+    app: redis-react
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-react
+  template:
+    metadata:
+      labels:
+        app: redis-react
+    spec:
+      containers:
+        - name: redis-react
+          image: faioa/crv:tme6-redis-react-image
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8080
+          env:
+          - name: "API_URL"
+            value: "http://192.168.67.2:32224/node-redis"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 200m
+              memory: 300Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-react
+spec:
+  selector:
+    app: redis-react
+  ports:
+  - port: 80
+    targetPort: 8080
