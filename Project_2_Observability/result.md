@@ -1,6 +1,6 @@
 Grafana:
-- Trục Y: Số yêu cầu mỗi giây (tối đa khoảng 300-350 req/s).
-- Trục X: Thời gian (khoảng 4 phút, từ 10:30:15 đến 10:34:00).
+- Y-axis: Number of requests per second (maximum about 300-350 req/s).
+- X-axis: Time (about 4 minutes, from 10:30:15 to 10:34:00).
 
 ### node fetchData.js `pending`:
 - 200 10000: 0
