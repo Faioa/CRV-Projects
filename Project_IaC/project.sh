@@ -142,11 +142,11 @@ start_cluster() {
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
-  if [[ $tmp != "2" ]]; then
-    echo "Configuring addon metallb..."
-    export IP_BASE=$(minikube ip -p $PROFILE_NAME | cut -d"." -f1-3)
-    check_command
-      cat <<EOF | kubectl apply --context=$PROFILE_NAME -f - >/dev/null
+
+  echo "Configuring addon metallb..."
+  export IP_BASE=$(minikube ip -p $PROFILE_NAME | cut -d"." -f1-3)
+  check_command
+  cat <<EOF | kubectl apply --context=$PROFILE_NAME -f - >/dev/null
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -160,15 +160,23 @@ data:
       addresses:
       - ${IP_BASE}.200-${IP_BASE}.254
 EOF
-    echo -e "\033[1;34mDone !\033[0m"
-  fi
+  echo -e "\033[1;34mDone !\033[0m"
 
-  echo "Deploying Ingress Controller..."
-  kubectl apply --context=$PROFILE_NAME -f "$CONFIG_DIR/ingress/ingress-controller.yaml" >/dev/null
+  echo "Waiting for metallb's controller to be ready..."
+  kubectl wait --context=$PROFILE_NAME -n metallb-system \
+    --for=condition=ready pod \
+    --selector=component=controller \
+    --timeout=180s >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 
-  sleep 2
+  if [[ $tmp != "2" ]]; then
+    echo "Deploying Ingress Controller..."
+    kubectl apply --context=$PROFILE_NAME -f "$CONFIG_DIR/ingress/ingress-controller.yaml" >/dev/null
+    check_command
+    sleep 2
+    echo -e "\033[1;34mDone !\033[0m"
+  fi
 
   echo "Waiting for Ingress Controller to be ready..."
   kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
