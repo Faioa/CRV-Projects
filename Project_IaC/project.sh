@@ -32,7 +32,12 @@ REQUIRED_FILES=("monitoring-namespace.yaml"\
                 "ingress/ingress-controller-autoscaler.yaml"\
                 "ingress/ingress-controller.yaml"\
                 "node-exporter/node-exporter-cluster-role.yaml"\
-                "node-exporter/node-exporter.yaml")
+                "node-exporter/node-exporter.yaml"\
+                "kube-state-metrics/ksm-cluster-role.yaml"\
+                "kube-state-metrics/ksm-cluster-role-binding.yaml"\
+                "kube-state-metrics/ksm-deployment.yaml"\
+                "kube-state-metrics/ksm-service.yaml"\
+                "kube-state-metrics/ksm-service-account.yaml")
 USED_FILES=("ingress/ingress-controller.yaml"\
             "monitoring-namespace.yaml"\
             "grafana/grafana.yaml"\
@@ -49,7 +54,12 @@ USED_FILES=("ingress/ingress-controller.yaml"\
             "ingress/ingress.yaml"\
             "ingress/ingress-controller-autoscaler.yaml"\
             "node-exporter/node-exporter-cluster-role.yaml"\
-            "node-exporter/node-exporter.yaml")
+            "node-exporter/node-exporter.yaml"\
+            "kube-state-metrics/ksm-cluster-role.yaml"\
+            "kube-state-metrics/ksm-cluster-role-binding.yaml"\
+            "kube-state-metrics/ksm-deployment.yaml"\
+            "kube-state-metrics/ksm-service.yaml"\
+            "kube-state-metrics/ksm-service-account.yaml")
 DELETE_FILES=("grafana/grafana-config.yaml"\
               "prometheus/prometheus.yaml"\
               "redis-react/redis-react.yaml")
@@ -142,7 +152,6 @@ start_cluster() {
     echo -e "\033[1;34mDone !\033[0m"
   fi
 
-
   echo "Configuring addon metallb..."
   export IP_BASE=$(minikube ip -p $PROFILE_NAME | cut -d"." -f1-3)
   check_command
@@ -158,16 +167,8 @@ data:
     - name: default
       protocol: layer2
       addresses:
-      - ${IP_BASE}.200-${IP_BASE}.254
+      - ${IP_BASE}.200-${IP_BASE}.253
 EOF
-  echo -e "\033[1;34mDone !\033[0m"
-
-  echo "Waiting for metallb's controller to be ready..."
-  kubectl wait --context=$PROFILE_NAME -n metallb-system \
-    --for=condition=ready pod \
-    --selector=component=controller \
-    --timeout=180s >/dev/null
-  check_command
   echo -e "\033[1;34mDone !\033[0m"
 
   if [[ $tmp != "2" ]]; then
@@ -180,8 +181,13 @@ EOF
 
   echo "Waiting for Ingress Controller to be ready..."
   kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
-    --for=condition=ready pod \
+    --for=condition=Ready pod \
     --selector=app.kubernetes.io/component=controller \
+    --timeout=180s >/dev/null
+  check_command
+  kubectl wait --context=$PROFILE_NAME -n ingress-nginx \
+    --for=condition=Complete job \
+    --all \
     --timeout=180s >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
@@ -211,17 +217,17 @@ EOF
   fi
 
   echo "Waiting for Pods to be ready..."
-  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod -l app=redis --timeout=120s >/dev/null
   check_command
-  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis-replica --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod -l app=redis-replica --timeout=120s >/dev/null
   check_command
-  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=node-redis --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod -l app=node-redis --timeout=120s >/dev/null
   check_command
-  kubectl wait --context=$PROFILE_NAME --for=condition=ready pod -l app=redis-react --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod -l app=redis-react --timeout=120s >/dev/null
   check_command
-  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=ready pod -l app=grafana --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=Ready pod -l app=grafana --timeout=120s >/dev/null
   check_command
-  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=ready pod -l app=prometheus --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=Ready pod -l app=prometheus --timeout=120s >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 

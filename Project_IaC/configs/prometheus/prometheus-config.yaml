@@ -8,7 +8,7 @@ data:
     global:
       scrape_interval: 5s
     scrape_configs:
-      - job_name: kubernetes-pods
+      - job_name: pods-metrics
         kubernetes_sd_configs:
           - role: pod
             namespaces:
@@ -17,6 +17,7 @@ data:
                 - monitoring
                 - ingress-nginx
                 - metallb-system
+
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
@@ -42,3 +43,9 @@ data:
           - source_labels: [__meta_kubernetes_pod_name]
             action: replace
             target_label: kubernetes_pod_name
+
+      - job_name: 'kube-state-metrics'
+        static_configs:
+        - targets: ['kube-state-metrics.kube-system.svc.cluster.local:8080', 'kube-state-metrics.kube-system.svc.cluster.local:8081']
+          labels:
+            component: 'kube-state-metrics'
