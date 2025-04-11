@@ -6,7 +6,7 @@ metadata:
 data:
   prometheus.yml: |
     global:
-      scrape_interval: 15s
+      scrape_interval: 5s
     scrape_configs:
       - job_name: kubernetes-pods
         kubernetes_sd_configs:
@@ -16,6 +16,7 @@ data:
                 - default
                 - monitoring
                 - ingress-nginx
+                - metallb-system
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep
