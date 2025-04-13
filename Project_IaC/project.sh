@@ -217,17 +217,9 @@ EOF
   fi
 
   echo "Waiting for Pods to be ready..."
-  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod -l app=redis --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod --all --timeout=300s >/dev/null
   check_command
-  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod -l app=redis-replica --timeout=120s >/dev/null
-  check_command
-  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod -l app=node-redis --timeout=120s >/dev/null
-  check_command
-  kubectl wait --context=$PROFILE_NAME --for=condition=Ready pod -l app=redis-react --timeout=120s >/dev/null
-  check_command
-  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=Ready pod -l app=grafana --timeout=120s >/dev/null
-  check_command
-  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=Ready pod -l app=prometheus --timeout=120s >/dev/null
+  kubectl wait --context=$PROFILE_NAME -n monitoring --for=condition=Ready pod --all --timeout=300s >/dev/null
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 
