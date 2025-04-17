@@ -22,7 +22,7 @@ REQUIRED_FILES=("monitoring-namespace.yaml"\
                 "node-redis/node-redis.yaml"\
                 "node-redis/node-redis-autoscaler.yaml"\
                 "prometheus/prometheus-cluster-role.yaml"\
-                "prometheus/prometheus-config.yaml"\
+                "prometheus/prometheus-config-template.yaml"\
                 "prometheus/prometheus-template.yaml"\
                 "redis/redis.yaml"\
                 "redis-react/redis-react-template.yaml"\
@@ -62,6 +62,7 @@ USED_FILES=("ingress/ingress-controller.yaml"\
             "kube-state-metrics/ksm-service-account.yaml")
 DELETE_FILES=("grafana/grafana-config.yaml"\
               "prometheus/prometheus.yaml"\
+              "prometheus/prometheus-config.yaml"\
               "redis-react/redis-react.yaml")
 
 help_cmd() {
@@ -192,6 +193,8 @@ EOF
   check_command
   echo -e "\033[1;34mDone !\033[0m"
 
+  export CLUSTER_IP=$(minikube -p $PROFILE_NAME ip)
+  check_command
   export INGRESS_CONTROLLER_PROT="http"
   tmp_url=$(kubectl get --context=$PROFILE_NAME service -n ingress-nginx | grep -E "(ingress-nginx-controller).*(LoadBalancer)" | tr -s " " | cut -d " " -f 4)
   check_command
@@ -204,6 +207,7 @@ EOF
   envsubst < "$CONFIG_DIR/redis-react/redis-react-template.yaml" > "$CONFIG_DIR/redis-react/redis-react.yaml"
   envsubst < "$CONFIG_DIR/grafana/grafana-config-template.yaml" > "$CONFIG_DIR/grafana/grafana-config.yaml"
   envsubst < "$CONFIG_DIR/prometheus/prometheus-template.yaml" > "$CONFIG_DIR/prometheus/prometheus.yaml"
+  envsubst < "$CONFIG_DIR/prometheus/prometheus-config-template.yaml" > "$CONFIG_DIR/prometheus/prometheus-config.yaml"
 
   if [[ $tmp != "2" ]]; then
     echo "Deploying services..."
