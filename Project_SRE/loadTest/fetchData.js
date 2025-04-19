@@ -1,4 +1,4 @@
-const URL = process.env.URL || 'http://192.168.58.200/prometheus/'
+const URL = process.env.URL || 'localhost:8080'
 
 const words = [
   'drive',

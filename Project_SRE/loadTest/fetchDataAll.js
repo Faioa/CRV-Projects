@@ -1,4 +1,4 @@
-const URL = process.env.URL || "http://192.168.58.200";
+const URL = process.env.URL || "localhost:8080";
 
 const words = [
   "drive",
@@ -67,7 +67,7 @@ const writeAndRead = async (max = 10000, iter = 10) => {
   while (call < max) {
     console.log("fetch");
     const writeRes = Promise.all(
-      new Array(Math.floor(iter / 10)).fill(1).map((_) => {
+      new Array(Math.floor(iter)).fill(1).map((_) => {
         const id = words[random(words.length)];
         const val = sentences[random(sentences.length)];
         return setItem({ id, val });
@@ -90,40 +90,29 @@ const openPendingConnections = async (max = 200, time = 10000) =>
   Promise.all(new Array(max).fill(1).map((_) => unsafe(time)));
 
 const main = async () => {
-  const [node, script, command] = process.argv;
+  const nbTotal = [100000, 200000, 500000, 1000000];
+  const nbConcurrent = [100000, 500000, 1000000, 5000000, 10000000];
 
-  const nbTotal = [1000, 10000, 50000, 100000, 200000, 500000, 1000000];
-  const nbConcurrent = [500, 1000, 5000, 10000, 20000, 50000, 100000];
+  console.log("Connecting to " + URL);
+  await fetch(URL);
+  console.log("Connection established");
 
-  if (command === "all") {
-    console.log("Connecting to " + URL);
-    await fetch(URL);
-    console.log("Connection established");
+  for (const total of nbTotal) {
+    for (const concurrent of nbConcurrent) {
+      console.log(`nbTotal=${total}, nbConcurrent=${concurrent}`);
 
-    for (const total of nbTotal) {
-      for (const concurrent of nbConcurrent) {
-        console.log(`nbTotal=${total}, nbConcurrent=${concurrent}`);
+      console.log("--> Server test...");
+      await onlyServerTest(total, concurrent);
+      console.log("Server test completed");
 
-        console.log("--> Server test...");
-        await onlyServerTest(total, concurrent);
-        console.log("Server test completed");
+      console.log("--> Write and read test...");
+      await writeAndRead(total, concurrent);
+      console.log("Write and read test completed");
 
-        console.log("--> Write and read test...");
-        await writeAndRead(total, concurrent);
-        console.log("Write and read test completed");
-
-        console.log("--> Pending connections test...");
-        await openPendingConnections(concurrent, 10000);
-        console.log("Pending connections test completed");
-      }
+      console.log("--> Pending connections test...");
+      await openPendingConnections(concurrent, 10000);
+      console.log("Pending connections test completed");
     }
-  } else {
-    console.log("Connecting to " + URL);
-    await fetch(URL);
-    console.log("Connection ok");
-    console.log(`Try with argument:
-      - node fetchData.js all
-    `);
   }
 
   console.log("Execution finished successfully");
