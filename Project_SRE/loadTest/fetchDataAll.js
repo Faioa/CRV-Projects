@@ -1,5 +1,4 @@
-const URL = process.env.URL || "http://192.168.67.2:32224/node-redis";
-const fs = require('fs').promises;
+const URL = process.env.URL || "http://192.168.58.200";
 
 const words = [
   "drive",
@@ -91,107 +90,43 @@ const openPendingConnections = async (max = 200, time = 10000) =>
   Promise.all(new Array(max).fill(1).map((_) => unsafe(time)));
 
 const main = async () => {
-  const [n, script, mode] = process.argv;
-
-  if (mode !== 'all') {
-    console.log("Please run with: node fetchDataAll.js all");
-    return;
-  }
+  const [node, script, command] = process.argv;
 
   const nbTotal = [1000, 10000, 50000, 100000, 200000, 500000, 1000000];
   const nbConcurrent = [500, 1000, 5000, 10000, 20000, 50000, 100000];
-  
-  // Initialize results array for markdown table
-  const results = [];
 
-  // Test connection
-  console.log("Connecting to " + URL);
-  await fetch(URL);
-  console.log("Connection OK");
+  if (command === "all") {
+    console.log("Connecting to " + URL);
+    await fetch(URL);
+    console.log("Connection established");
 
-  // Iterate through all combinations
-  for (const total of nbTotal) {
-    for (const concurrent of nbConcurrent) {
-      // Test server function
-      let startTime = performance.now();
-      try {
+    for (const total of nbTotal) {
+      for (const concurrent of nbConcurrent) {
+        console.log(`nbTotal=${total}, nbConcurrent=${concurrent}`);
+
+        console.log("--> Server test...");
         await onlyServerTest(total, concurrent);
-        results.push({
-          function: 'server',
-          total,
-          concurrent,
-          executionTime: (performance.now() - startTime) / 1000,
-          notes: ''
-        });
-      } catch (error) {
-        results.push({
-          function: 'server',
-          total,
-          concurrent,
-          executionTime: 0,
-          notes: `Error: ${error.message}`
-        });
-      }
+        console.log("Server test completed");
 
-      // Test writeRead function
-      startTime = performance.now();
-      try {
+        console.log("--> Write and read test...");
         await writeAndRead(total, concurrent);
-        results.push({
-          function: 'writeRead',
-          total,
-          concurrent,
-          executionTime: (performance.now() - startTime) / 1000,
-          notes: ''
-        });
-      } catch (error) {
-        results.push({
-          function: 'writeRead',
-          total,
-          concurrent,
-          executionTime: 0,
-          notes: `Error: ${error.message}`
-        });
-      }
+        console.log("Write and read test completed");
 
-      // Test pending function
-      startTime = performance.now();
-      try {
-        await openPendingConnections(total, concurrent);
-        results.push({
-          function: 'pending',
-          total,
-          concurrent,
-          executionTime: (performance.now() - startTime) / 1000,
-          notes: ''
-        });
-      } catch (error) {
-        results.push({
-          function: 'pending',
-          total,
-          concurrent,
-          executionTime: 0,
-          notes: `Error: ${error.message}`
-        });
+        console.log("--> Pending connections test...");
+        await openPendingConnections(concurrent, 10000);
+        console.log("Pending connections test completed");
       }
     }
+  } else {
+    console.log("Connecting to " + URL);
+    await fetch(URL);
+    console.log("Connection ok");
+    console.log(`Try with argument:
+      - node fetchData.js all
+    `);
   }
 
-  // Generate markdown table
-  const markdownTable = `
-# Test Results
-
-| Function | Number of Total | Number of Concurrent | Execution Time (s) | Notes |
-|----------|-----------------|----------------------|--------------------|-------|
-${results.map(r => 
-  `| ${r.function} | ${r.total} | ${r.concurrent} | ${r.executionTime.toFixed(2)} | ${r.notes} |`
-).join('\n')}
-`;
-
-  // Write to table.md
-  await fs.writeFile('table.md', markdownTable);
-  
-  console.log("Execution finished successfully. Results written to table.md");
+  console.log("Execution finished successfully");
 };
 
 main();
