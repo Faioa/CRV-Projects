@@ -58,18 +58,6 @@ spec:
           env:
           - name: REDIS_ADDR
             value: "redis://localhost:6379"
-          livenessProbe:
-            httpGet:
-              path: /metrics
-              port: 9121
-            initialDelaySeconds: 15
-            timeoutSeconds: 5
-          readinessProbe:
-            httpGet:
-              path: /metrics
-              port: 9121
-            initialDelaySeconds: 5
-            timeoutSeconds: 1
           resources:
             requests:
               cpu: 50m
