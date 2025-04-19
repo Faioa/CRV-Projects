@@ -28,7 +28,7 @@ spec:
             value: "3000"
           - name: REDIS_URL
             value: "redis://redis.default.svc.cluster.local:6379"
-          - name: REDIS_REPLICAS
+          - name: REDIS_REPLICAS_URL
             value: "redis://redis-replica.default.svc.cluster.local:6379"
           resources:
             requests:
