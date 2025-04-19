@@ -54,6 +54,15 @@ spec:
             - mountPath: /etc/grafana/grafana.ini
               name: grafana-config
               subPath: grafana.ini
+            - mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              name: grafana-datasources
+              subPath: datasources.yaml
+            - mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              name: grafana-dashboards-config
+              subPath: dashboards.yaml
+            - mountPath: /var/lib/grafana/dashboards/default-dashboard.json
+              name: grafana-default-dashboard
+              subPath: default-dashboard.json
           resources:
             requests:
               cpu: 250m
@@ -68,6 +77,24 @@ spec:
             items:
             - key: grafana.ini
               path: grafana.ini
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+            items:
+            - key: datasources.yaml
+              path: datasources.yaml
+        - name: grafana-dashboards-config
+          configMap:
+            name: grafana-dashboards-config
+            items:
+            - key: dashboards.yaml
+              path: dashboards.yaml
+        - name: grafana-default-dashboard
+          configMap:
+            name: grafana-default-dashboard
+            items:
+            - key: default-dashboard.json
+              path: default-dashboard.json
   volumeClaimTemplates:
   - metadata:
       name: grafana

@@ -59,3 +59,13 @@ data:
         static_configs:
           - targets: ['${CLUSTER_IP}:10250']
         metrics_path: /metrics/cadvisor
+
+      - job_name: 'kubernetes-kubelet'
+        scheme: https
+        tls_config:
+          insecure_skip_verify: true
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        static_configs:
+          - targets: ['${CLUSTER_IP}:10250']
+        metrics_path: /metrics
