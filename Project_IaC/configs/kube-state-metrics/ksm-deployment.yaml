@@ -53,7 +53,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         args:
-          - --metric-labels-allowlist=pods=[app]
+          - --metric-labels-allowlist=pods=[*]
       nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: kube-state-metrics
