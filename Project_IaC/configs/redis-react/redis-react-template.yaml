@@ -25,11 +25,11 @@ spec:
             value: "${INGRESS_CONTROLLER_PROT}://${INGRESS_CONTROLLER_ADDR}/node-redis"
           resources:
             requests:
-              cpu: 100m
-              memory: 200Mi
+              cpu: 40m
+              memory: 80Mi
             limits:
-              cpu: 200m
-              memory: 300Mi
+              cpu: 80m
+              memory: 150Mi
 
 ---
 apiVersion: v1

@@ -45,11 +45,11 @@ spec:
             mountPath: /data
           resources:
             requests:
-              cpu: 150m
-              memory: 200Mi
+              cpu: 80m
+              memory: 120Mi
             limits:
-              cpu: 250m
-              memory: 400Mi
+              cpu: 150m
+              memory: 250Mi
         - name: redis-exporter
           image: faioa/crv:olivier006_redis_exporter
           imagePullPolicy: IfNotPresent
@@ -60,11 +60,11 @@ spec:
             value: "redis://localhost:6379"
           resources:
             requests:
-              cpu: 50m
-              memory: 100Mi
+              cpu: 20m
+              memory: 40Mi
             limits:
-              cpu: 50m
-              memory: 100Mi
+              cpu: 30m
+              memory: 60Mi
   volumeClaimTemplates:
   - metadata:
       name: redis

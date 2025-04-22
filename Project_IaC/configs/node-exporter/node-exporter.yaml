@@ -57,11 +57,11 @@ spec:
           path: /
       resources:
           requests:
-            cpu: 50m
-            memory: 75Mi
+            cpu: 20m
+            memory: 40Mi
           limits:
-            cpu: 100m
-            memory: 150Mi
+            cpu: 50m
+            memory: 80Mi
 ---
 apiVersion: v1
 kind: Service

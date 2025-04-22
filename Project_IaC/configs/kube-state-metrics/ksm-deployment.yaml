@@ -57,3 +57,10 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: kube-state-metrics
+      resources:
+        requests:
+          cpu: 40m
+          memory: 80Mi
+        limits:
+          cpu: 80m
+          memory: 120Mi
