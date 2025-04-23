@@ -162,7 +162,7 @@ data:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "max_over_time(kube_pod_status_phase{pod=~\"(redis|node-redis|ingress-nginx).*\"}[15m])",
+              "expr": "max_over_time(kube_pod_status_phase{pod=~\"(redis|node-redis|ingress-nginx).*\"}[10s])",
               "format": "table",
               "hide": false,
               "instant": true,
