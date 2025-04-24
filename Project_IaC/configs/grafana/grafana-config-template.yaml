@@ -1154,7 +1154,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum by(route, method) (\n  idelta(http_requests_total{app=\"node-redis\"}[15m])\n  or\n  (http_requests_total{app=\"node-redis\"} > 0) * 0 + 1\n)",
+              "expr": "sum by(route, method) (\n  idelta(http_requests_total{app=\"node-redis\"}[15m])\n  or\n  http_requests_total{app=\"node-redis\"} > 0)\n",
               "legendFormat": "{{method}} : {{route}}",
               "range": true,
               "refId": "A"
@@ -1392,6 +1392,8 @@ data:
                 }
               },
               "mappings": [],
+              "max": 100,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1433,7 +1435,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "(\n  (sum by(route, method, status) (rate(http_request_duration_seconds_count{status=~\"[45]XX\", app=\"node-redis\"}[2s]))) or 0 * sum by(route, method, status) (http_requests_total{status=~\"[45]XX\", app=\"node-redis\"})\n  / \n  sum by(route, method, status) (rate(http_request_duration_seconds_count{app=\"node-redis\"}[2s]))\n)",
+              "expr": "((\n  sum by(route, method) (delta(http_request_duration_seconds_count{status=~\"[45]XX\", app=\"node-redis\"}[2s]) or 0 * sum by(route, method, status) (http_requests_total{status=~\"[45]XX\", app=\"node-redis\"})) \n  / \n  (sum by(route, method) (delta(http_request_duration_seconds_count{app=\"node-redis\"}[2s])) > 0)\n) * 100)\nor\n  (sum by(route, method) (delta(http_request_duration_seconds_count{app=\"node-redis\"}[10s])) * 0)",
               "legendFormat": "{{method}} : {{route}} {{status}}",
               "range": true,
               "refId": "A"
