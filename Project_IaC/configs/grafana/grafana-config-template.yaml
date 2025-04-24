@@ -372,7 +372,7 @@ data:
           },
           "hideTimeOverride": true,
           "id": 11,
-          "interval": "10s",
+          "interval": "1s",
           "options": {
             "colorMode": "none",
             "graphMode": "none",
@@ -420,7 +420,7 @@ data:
               "refId": "Ingress-Controller-Max"
             }
           ],
-          "timeFrom": "15m",
+          "timeFrom": "10s",
           "title": "Max CPU Usage (cores)",
           "transparent": true,
           "type": "stat"
@@ -457,7 +457,7 @@ data:
           },
           "hideTimeOverride": true,
           "id": 13,
-          "interval": "10s",
+          "interval": "1s",
           "options": {
             "colorMode": "none",
             "graphMode": "none",
@@ -505,7 +505,7 @@ data:
               "refId": "Ingress-Controller-Max"
             }
           ],
-          "timeFrom": "15m",
+          "timeFrom": "10s",
           "title": "Max Memory Usage",
           "transparent": true,
           "type": "stat"
