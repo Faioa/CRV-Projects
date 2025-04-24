@@ -79,6 +79,14 @@ app.get('/items', (req, res) => {
   readClient.keys('*').then((keys) => res.send(JSON.stringify(keys)))
 })
 
+app.get('/unsafe', (req, res) => {
+  const delayMs = parseInt(req.query.time) || 10000;
+  log('unsafe endpoint called with delay', delayMs);
+  setTimeout(() => {
+    res.send('ok');
+  }, delayMs);
+});
+
 app.listen(port, () => {
   log(`listening at http://localhost:${port} server ${UUID}`)
 })
