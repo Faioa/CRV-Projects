@@ -33,6 +33,9 @@ SERVER_ITER=100
 PENDING_COUNT=200
 PENDING_TIME=10000
 
+# Create logs directory
+LOGS_DIR=$(mktemp -d)
+
 # Validate test type
 valid_tests=("writeRead" "pending" "server" "combined")
 valid=false
@@ -69,7 +72,9 @@ run_test() {
   local test_type=$1
   local process_count=$2
   local pid_list=()
+  local log_files=()
   local start_time=$(date +%s)
+  local total_requests=0
   
   echo "📊 Starting $test_type test with $process_count processes"
   
@@ -82,24 +87,34 @@ run_test() {
   case $test_type in
     "server")
       for (( i=1; i<=$process_count; i++ )); do
-        node loadTest/fetchData.js server $REQUESTS_PER_PROCESS $SERVER_ITER >/dev/null 2>&1 &
+        log_file="$LOGS_DIR/${test_type}_${i}_$(date +%s).log"
+        node loadTest/fetchData.js server $REQUESTS_PER_PROCESS $SERVER_ITER > "$log_file" 2>&1 &
         pid_list+=($!)
+        log_files+=("$log_file")
         echo "  - Started server test process $i with PID ${pid_list[-1]}"
       done
+      total_requests=$((process_count * REQUESTS_PER_PROCESS))
       ;;
     "writeRead")
       for (( i=1; i<=$process_count; i++ )); do
-        node loadTest/fetchData.js writeRead $REQUESTS_PER_PROCESS $WRITE_READ_ITER >/dev/null 2>&1 &
+        log_file="$LOGS_DIR/${test_type}_${i}_$(date +%s).log"
+        node loadTest/fetchData.js writeRead $REQUESTS_PER_PROCESS $WRITE_READ_ITER > "$log_file" 2>&1 &
         pid_list+=($!)
+        log_files+=("$log_file")
         echo "  - Started writeRead test process $i with PID ${pid_list[-1]}"
       done
+      # Write/read has roughly 1.1 requests per iteration due to the mix of operations
+      total_requests=$((process_count * REQUESTS_PER_PROCESS * 11 / 10))
       ;;
     "pending")
       for (( i=1; i<=$process_count; i++ )); do
-        node loadTest/fetchData.js pending $PENDING_COUNT $PENDING_TIME >/dev/null 2>&1 &
+        log_file="$LOGS_DIR/${test_type}_${i}_$(date +%s).log"
+        node loadTest/fetchData.js pending $PENDING_COUNT $PENDING_TIME > "$log_file" 2>&1 &
         pid_list+=($!)
+        log_files+=("$log_file")
         echo "  - Started pending connections test process $i with PID ${pid_list[-1]}"
       done
+      total_requests=$((process_count * PENDING_COUNT))
       ;;
     "combined")
       for (( i=1; i<=$process_count; i++ )); do
@@ -107,22 +122,29 @@ run_test() {
         test_types=("server" "writeRead" "pending")
         random_index=$((RANDOM % 3))
         random_test=${test_types[$random_index]}
+        log_file="$LOGS_DIR/${test_type}_${random_test}_${i}_$(date +%s).log"
         
         case $random_test in
           "server")
-            node loadTest/fetchData.js server $REQUESTS_PER_PROCESS $SERVER_ITER >/dev/null 2>&1 &
+            node loadTest/fetchData.js server $REQUESTS_PER_PROCESS $SERVER_ITER > "$log_file" 2>&1 &
             pid_list+=($!)
+            log_files+=("$log_file")
             echo "  - Started random test (server) with PID ${pid_list[-1]}"
+            total_requests=$((total_requests + REQUESTS_PER_PROCESS))
             ;;
           "writeRead")
-            node loadTest/fetchData.js writeRead $REQUESTS_PER_PROCESS $WRITE_READ_ITER >/dev/null 2>&1 &
+            node loadTest/fetchData.js writeRead $REQUESTS_PER_PROCESS $WRITE_READ_ITER > "$log_file" 2>&1 &
             pid_list+=($!)
+            log_files+=("$log_file")
             echo "  - Started random test (writeRead) with PID ${pid_list[-1]}"
+            total_requests=$((total_requests + REQUESTS_PER_PROCESS * 11 / 10))
             ;;
           "pending")
-            node loadTest/fetchData.js pending $PENDING_COUNT $PENDING_TIME >/dev/null 2>&1 &
+            node loadTest/fetchData.js pending $PENDING_COUNT $PENDING_TIME > "$log_file" 2>&1 &
             pid_list+=($!)
+            log_files+=("$log_file")
             echo "  - Started random test (pending) with PID ${pid_list[-1]}"
+            total_requests=$((total_requests + PENDING_COUNT))
             ;;
         esac
         
@@ -132,26 +154,81 @@ run_test() {
       ;;
   esac
   
-  # Wait for all processes to complete with progress update
-  echo "  - Waiting for processes to complete..."
-  local completed=0
-  while [ ${#pid_list[@]} -gt 0 ]; do
+  # Monitor server and processes
+  echo "  - Monitoring server health..."
+  local server_crashed=false
+  local completed_processes=0
+  local crash_time=""
+  
+  while [ $completed_processes -lt ${#pid_list[@]} ]; do
+    # Check if server is still responsive every 5 seconds
+    if ! $server_crashed && ! check_server; then
+      crash_time=$(date +"%T")
+      echo "❌ SERVER CRASHED at $crash_time during $test_type test!"
+      server_crashed=true
+      
+      # Count completed requests before crash
+      local actual_requests=0
+      for log_file in "${log_files[@]}"; do
+        if [ -f "$log_file" ]; then
+          local log_count=$(grep -c "fetch" "$log_file" || echo 0)
+          actual_requests=$((actual_requests + log_count))
+        fi
+      done
+      echo "  - Approximately $actual_requests requests were sent before crash"
+      
+      # Kill remaining processes
+      for pid in "${pid_list[@]}"; do
+        if kill -0 $pid 2>/dev/null; then
+          kill $pid 2>/dev/null
+        fi
+      done
+      break
+    fi
+    
+    # Check process status
+    completed_processes=0
     for i in "${!pid_list[@]}"; do
       if ! kill -0 ${pid_list[$i]} 2>/dev/null; then
-        completed=$((completed + 1))
-        echo "  - Process ${pid_list[$i]} completed ($completed/$process_count)"
-        unset pid_list[$i]
+        completed_processes=$((completed_processes + 1))
       fi
     done
-    # Update array after modification
-    pid_list=("${pid_list[@]}")
-    sleep 1
+    
+    echo -ne "  - Progress: $completed_processes/${#pid_list[@]} processes completed\r"
+    sleep 5
   done
   
-  local end_time=$(date +%s)
-  local duration=$((end_time - start_time))
+  echo ""
   
-  echo "✅ $test_type test completed in $duration seconds"
+  # Calculate statistics if no crash occurred
+  if ! $server_crashed; then
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    # Count actual requests from logs
+    local actual_requests=0
+    for log_file in "${log_files[@]}"; do
+      if [ -f "$log_file" ]; then
+        local log_count=$(grep -c "fetch" "$log_file" 2>/dev/null)
+        [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
+        actual_requests=$((actual_requests + log_count))
+      fi
+    done
+    
+    if [ $duration -gt 0 ]; then
+      local requests_per_second=$(bc <<< "scale=2; $actual_requests / $duration")
+      echo "✅ $test_type test completed successfully"
+      echo "📈 Statistics:"
+      echo "  - Total requests: $actual_requests"
+      echo "  - Test duration: $duration seconds"
+      echo "  - Throughput: $requests_per_second requests/second"
+    else
+      echo "✅ $test_type test completed too quickly to measure throughput"
+    fi
+  else
+    echo "❌ $test_type test aborted due to server crash"
+    echo "  - Server crashed at: $crash_time"
+  fi
 }
 
 # Main script execution
@@ -160,13 +237,9 @@ echo "URL: $URL"
 echo "Concurrent processes: $CONCURRENT_PROCESSES"
 echo "Test type: $TEST_TYPE"
 
-# Check if server is responsive before starting
-if ! check_server; then
-  echo "❌ Server at $URL is not responding! Aborting tests."
-  exit 1
-fi
-
 # Run the specified test
 run_test "$TEST_TYPE" "$CONCURRENT_PROCESSES"
 
-echo "✅ Test completed successfully"
+if [ -d "$LOGS_DIR" ]; then
+  echo "📝 Test logs available in $LOGS_DIR directory"
+fi
