@@ -80,13 +80,17 @@ app.get('/items', (req, res) => {
 })
 
 app.get('/unsafe', (req, res) => {
-  const delayMs = parseInt(req.query.time) || 10000;
-  log('unsafe endpoint called with delay', delayMs);
+  const delayMs = parseInt(req.query.time) || 10000
+  log('unsafe endpoint called with delay', delayMs)
+  req.socket.setTimeout(0)
   setTimeout(() => {
-    res.send('ok');
-  }, delayMs);
+    res.send('ok')
+  }, delayMs)
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   log(`listening at http://localhost:${port} server ${UUID}`)
 })
+server.timeout = 0;
+server.keepAliveTimeout = 0;
+server.headersTimeout = 0;
