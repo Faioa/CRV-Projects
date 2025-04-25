@@ -1079,7 +1079,7 @@ data:
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
-                "drawStyle": "line",
+                "drawStyle": "bars",
                 "fillOpacity": 0,
                 "gradientMode": "none",
                 "hideFrom": {
@@ -1117,10 +1117,6 @@ data:
                 "steps": [
                   {
                     "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               },
@@ -1154,7 +1150,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum by(route, method) (\n  idelta(http_requests_total{app=\"node-redis\"}[15m])\n  or\n  http_requests_total{app=\"node-redis\"} > 0)\n",
+              "expr": "sum by(route, method) (\n  idelta(http_requests_total{app=\"node-redis\"}[15m])\n  or\n  http_requests_total{app=\"node-redis\"} > 0\n)",
               "legendFormat": "{{method}} : {{route}}",
               "range": true,
               "refId": "A"
@@ -1274,7 +1270,7 @@ data:
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
-                "drawStyle": "line",
+                "drawStyle": "bars",
                 "fillOpacity": 0,
                 "gradientMode": "none",
                 "hideFrom": {
@@ -1289,7 +1285,7 @@ data:
                 "scaleDistribution": {
                   "type": "linear"
                 },
-                "showPoints": "never",
+                "showPoints": "always",
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
@@ -1340,7 +1336,7 @@ data:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "(\n  (sum by(route, method) (rate(http_request_duration_seconds_sum{app=\"node-redis\"}[2s]))) or 0 * sum by(route, method) (http_requests_total{app=\"node-redis\"})\n  / \n  sum by(route, method) (rate(http_request_duration_seconds_count{app=\"node-redis\"}[2s]))\n)",
+              "expr": "(\n  rate(http_request_duration_seconds_sum{app=\"node-redis\"}[2s])\n  /\n  rate(http_request_duration_seconds_count{app=\"node-redis\"}[2s])\n)\nor\n(\n   http_request_duration_seconds_sum{app=\"node-redis\"}\n   /\n   http_request_duration_seconds_count{app=\"node-redis\"}\n)",
               "instant": false,
               "legendFormat": "{{method}} : {{route}}",
               "range": true,
@@ -1366,7 +1362,7 @@ data:
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
-                "drawStyle": "line",
+                "drawStyle": "bars",
                 "fillOpacity": 0,
                 "gradientMode": "none",
                 "hideFrom": {
@@ -1381,7 +1377,7 @@ data:
                 "scaleDistribution": {
                   "type": "linear"
                 },
-                "showPoints": "never",
+                "showPoints": "always",
                 "spanNulls": false,
                 "stacking": {
                   "group": "A",
@@ -1399,10 +1395,6 @@ data:
                 "steps": [
                   {
                     "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               },
@@ -1417,6 +1409,7 @@ data:
             "y": 52
           },
           "id": 6,
+          "interval": "1s",
           "options": {
             "legend": {
               "calcs": [],
@@ -1435,7 +1428,10 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "((\n  sum by(route, method) (delta(http_request_duration_seconds_count{status=~\"[45]XX\", app=\"node-redis\"}[2s]) or 0 * sum by(route, method, status) (http_requests_total{status=~\"[45]XX\", app=\"node-redis\"})) \n  / \n  (sum by(route, method) (delta(http_request_duration_seconds_count{app=\"node-redis\"}[2s])) > 0)\n) * 100)\nor\n  (sum by(route, method) (delta(http_request_duration_seconds_count{app=\"node-redis\"}[10s])) * 0)",
+              "exemplar": false,
+              "expr": "(\n  sum by(route, method) (\n    idelta(http_requests_total{status=~\"[45]XX\", app=\"node-redis\"}[15m])\n    or\n    http_requests_total{status=~\"[45]XX\", app=\"node-redis\"}\n    or\n    0 * http_requests_total{app=\"node-redis\"}\n  )\n  /\n  sum by(route, method) (\n    idelta(http_requests_total{app=\"node-redis\"}[15m])\n    or\n    http_requests_total{app=\"node-redis\"} > 0\n  )\n) * 100",
+              "hide": false,
+              "instant": false,
               "legendFormat": "{{method}} : {{route}} {{status}}",
               "range": true,
               "refId": "A"
