@@ -352,7 +352,7 @@ update_state() {
           echo "• Grafana : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/grafana"
           echo "• Prometheus : $INGRESS_CONTROLLER_PROT://$INGRESS_CONTROLLER_ADDR/prometheus"
         else
-          echo "\033[0;31mERROR: This script cannot infer the state of the cluster. Please run further investigation with Minikube's and Kubernetes' commands.\033[0m" >&2
+          echo -e "\033[0;31mERROR: This script cannot infer the state of the cluster. Please run further investigation with Minikube's and Kubernetes' commands.\033[0m" >&2
           echo "Alternatively, you can use the command \"$0 force-delete\" to force the deletion of the cluster." >&2
           echo "Defaulting the cluster's state to \"Inexistant\" for the time being..." >&2
           echo "0" > $STATE_FILE
