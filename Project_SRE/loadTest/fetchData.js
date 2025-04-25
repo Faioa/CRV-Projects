@@ -1,3 +1,7 @@
+import http from 'http';
+
+http.globalAgent.maxSockets = Infinity;
+
 const URL = process.env.URL || 'localhost:8080'
 
 const words = [
@@ -32,7 +36,7 @@ const sleep = (ms) => new Promise((res, rej) => setTimeout(res, ms))
 
 const getItem = (id) => fetch(URL + '/item?id=' + id).catch(console.error)
 
-const unsafe = (t) => fetch(URL + '/unsafe?t=' + t).catch(console.error)
+const unsafe = (t) => fetch(URL + '/unsafe?time=' + t).catch(console.error)
 
 const setItem = ({ id, val }) =>
   fetch(URL + '/item', {
@@ -86,8 +90,14 @@ const writeAndRead = async (max = 10000, iter = 10) => {
   }
 }
 
-const openPendingConnections = async (max = 200, time = 10000) =>
-  Promise.all(new Array(max).fill(1).map((_) => unsafe(time)))
+const openPendingConnections = async (max = 200, time = 10000) => {
+  const requests = [];
+  for (let i = 0; i < max; i++) {
+    console.log('fetch')
+    requests.push(unsafe(time));
+  }
+  await Promise.all(requests);
+}
 
 const main = async () => {
   const [n, script, funct, arg1, arg2] = process.argv
