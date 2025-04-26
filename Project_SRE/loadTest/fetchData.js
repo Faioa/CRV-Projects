@@ -70,11 +70,17 @@ const writeAndRead = async (max = 10000, iter = 10) => {
   let call = 0
   while (call < max) {
     console.log('fetch')
+    // Create a large payload (50KB - 500KB)
+    const targetSize = 51200 + Math.floor(Math.random() * (512000 - 51200)) // 50KB - 500KB
+    const sentence = sentences[random(sentences.length)]
+    const sentenceLength = sentence.length
+    const repeatCount = Math.ceil(targetSize / sentenceLength)
+    const largePayload = sentence.repeat(repeatCount).slice(0, targetSize) // Split the sentence to fit the target size
+
     const writeRes = Promise.all(
-      new Array(Math.floor(iter / 10)).fill(1).map((_) => {
+      new Array(Math.floor(iter / 2)).fill(1).map((_) => {
         const id = words[random(words.length)]
-        const val = sentences[random(sentences.length)]
-        return setItem({ id, val })
+        return setItem({ id, val: largePayload })
       })
     )
     const readRes = Promise.all(
@@ -84,8 +90,6 @@ const writeAndRead = async (max = 10000, iter = 10) => {
     const res = await Promise.all([writeRes, readRes])
 
     call += res.flatMap((_) => _).length
-    console.log('wait')
-    sleep(200)
     console.log(call)
   }
 }
