@@ -73,7 +73,7 @@ run_test() {
   local process_count=$2
   local pid_list=()
   local log_files=()
-  local start_time=$(date +%s)
+  local start_time=0
   local total_requests=0
   
   echo "📊 Starting $test_type test with $process_count processes"
@@ -86,6 +86,7 @@ run_test() {
   
   case $test_type in
     "server")
+      start_time=$(date +%s)
       for (( i=1; i<=$process_count; i++ )); do
         log_file="$LOGS_DIR/${test_type}_${i}_$(date +%s).log"
         node loadTest/fetchData.js server $REQUESTS_PER_PROCESS $SERVER_ITER > "$log_file" 2>&1 &
@@ -96,6 +97,7 @@ run_test() {
       total_requests=$((process_count * REQUESTS_PER_PROCESS))
       ;;
     "writeRead")
+      start_time=$(date +%s)
       for (( i=1; i<=$process_count; i++ )); do
         log_file="$LOGS_DIR/${test_type}_${i}_$(date +%s).log"
         node loadTest/fetchData.js writeRead $REQUESTS_PER_PROCESS $WRITE_READ_ITER > "$log_file" 2>&1 &
@@ -107,6 +109,7 @@ run_test() {
       total_requests=$((process_count * REQUESTS_PER_PROCESS * 11 / 10))
       ;;
     "pending")
+      start_time=$(date +%s)
       for (( i=1; i<=$process_count; i++ )); do
         log_file="$LOGS_DIR/${test_type}_${i}_$(date +%s).log"
         node loadTest/fetchData.js pending $PENDING_COUNT $PENDING_TIME > "$log_file" 2>&1 &
@@ -117,6 +120,7 @@ run_test() {
       total_requests=$((process_count * PENDING_COUNT))
       ;;
     "combined")
+      start_time=$(date +%s)
       for (( i=1; i<=$process_count; i++ )); do
         # Choose a random test type
         test_types=("server" "writeRead" "pending")
@@ -195,7 +199,7 @@ run_test() {
     done
     
     echo -ne "  - Progress: $completed_processes/${#pid_list[@]} processes completed\r"
-    sleep 5
+    sleep 1
   done
   
   echo ""
@@ -206,20 +210,26 @@ run_test() {
     local duration=$((end_time - start_time))
     
     # Count actual requests from logs
-    local actual_requests=0
+    local total=0
+    local failed=0
     for log_file in "${log_files[@]}"; do
       if [ -f "$log_file" ]; then
-        local log_count=$(grep -c "fetch" "$log_file" 2>/dev/null)
+        local log_count=$(grep -c "^fetch$" "$log_file" 2>/dev/null)
         [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
-        actual_requests=$((actual_requests + log_count))
+        total=$((total + log_count))
+        log_count=$(grep -c "fetch failed" "$log_file" 2>/dev/null)
+        [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
+        failed=$((failed + log_count))
       fi
     done
-    
+    local actual_requests=$((total - failed))
+
     if [ $duration -gt 0 ]; then
-      local requests_per_second=$(bc <<< "scale=2; $actual_requests / $duration")
+      local requests_per_second=$(bc <<< "scale=2; $total / $duration")
       echo "✅ $test_type test completed successfully"
       echo "📈 Statistics:"
-      echo "  - Total requests: $actual_requests"
+      echo "  - Total requests: $total"
+      echo "  - Total success: $actual_requests"
       echo "  - Test duration: $duration seconds"
       echo "  - Throughput: $requests_per_second requests/second"
     else
