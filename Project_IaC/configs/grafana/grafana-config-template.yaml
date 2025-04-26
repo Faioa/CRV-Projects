@@ -1336,7 +1336,7 @@ data:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "(\n  rate(http_request_duration_seconds_sum{app=\"node-redis\"}[2s])\n  /\n  rate(http_request_duration_seconds_count{app=\"node-redis\"}[2s])\n)\nor\n(\n   http_request_duration_seconds_sum{app=\"node-redis\"}\n   /\n   http_request_duration_seconds_count{app=\"node-redis\"}\n)",
+              "expr": "avg by(method, route) (\n  (\n    rate(http_request_duration_seconds_sum{app=\"node-redis\"}[2s])\n    /\n    rate(http_request_duration_seconds_count{app=\"node-redis\"}[2s])\n  )\n  or\n  (\n    http_request_duration_seconds_sum{app=\"node-redis\"}\n    /\n    http_request_duration_seconds_count{app=\"node-redis\"}\n  )\n)",
               "instant": false,
               "legendFormat": "{{method}} : {{route}}",
               "range": true,
