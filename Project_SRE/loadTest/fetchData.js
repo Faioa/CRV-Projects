@@ -1,63 +1,68 @@
-import http from 'http';
+import http from 'http'
+import crypto from 'crypto'
 
 http.globalAgent.maxSockets = Infinity;
 
 const URL = process.env.URL || 'localhost:8080'
 
-const words = [
-  'drive',
-  'driver',
-  'capacitor',
-  'card',
-  'port',
-  'interface',
-  'bandwidth',
-  'alarm',
-  'port',
-  'card',
-]
-
-const sentences = [
-  "I'll copy the open-source PNG program, that should hard drive the IP driver!",
-  'Use the digital API port, then you can connect the online interface!',
-  'Try to synthesize the ASCII transmitter, maybe it will connect the bluetooth panel!',
-  'The XSS application is down, program the optical protocol so we can index the SSL monitor!',
-  'If we generate the circuit, we can get to the SDD driver through the cross-platform CSS monitor!',
-  'We need to calculate the wireless GB bus!',
-  "I'll synthesize the digital IB panel, that should hard drive the HTTP matrix!",
-  'If we bypass the program, we can get to the SAS port through the primary IP system!',
-  'Use the haptic OCR hard drive, then you can synthesize the multi-byte system!',
-  'Try to quantify the XML application, maybe it will compress the wireless bandwidth!',
-]
-
 const random = (max) => Math.floor(Math.random() * max)
 
 const sleep = (ms) => new Promise((res, rej) => setTimeout(res, ms))
 
-const getItem = (id) => fetch(URL + '/item?id=' + id).catch(console.error)
+const getItem = (id) => {
+  console.log('fetch')
+  fetch(URL + '/item?id=' + id).catch((err) => {
+    console.error(err)
+  })
+}
 
-const unsafe = (t) => fetch(URL + '/unsafe?time=' + t).catch(console.error)
+const unsafe = (t) => {
+  console.log('fetch')
+  fetch(URL + '/unsafe?time=' + t).catch((err) => {
+    console.error(err)
+  })
+}
 
-const setItem = ({ id, val }) =>
+const setItem = ({ id, val }) => {
+  console.log('fetch')
   fetch(URL + '/item', {
     method: 'POST',
     headers: {
       Accept: 'application/json',
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
     },
     body: JSON.stringify({ id, val }),
-  }).catch(console.error)
+  }).catch((err) => {
+    console.error(err)
+  })
+}
 
-const fetchAll = () => fetch(URL + '/items').catch(console.error)
+const fetchAll = () => {
+  console.log('fetch')
+  fetch(URL + '/items').catch((err) => {
+    console.error(err)
+  })
+}
 
-const cannotFetch = () => fetch(URL + '/nothing').catch(console.error)
+const cannotFetch = () => {
+  console.log('fetch')
+  fetch(URL + '/nothing').catch((err) => {
+    console.error(err)
+  })
+}
 
-const ping = () => fetch(URL).catch(console.error)
+const ping = () => {
+  console.log('fetch')
+  fetch(URL, {
+    headers: { 'Connection': 'close' }
+  }).catch((err) => {
+    console.error(err)
+  })
+}
 
 const onlyServerTest = async (max = 10000, iter = 100) => {
   let call = 0
   while (call < max) {
-    console.log('fetch')
     const res = await Promise.all(new Array(iter).fill(1).map((_) => ping()))
     call += res.length
     console.log('wait')
@@ -69,27 +74,37 @@ const onlyServerTest = async (max = 10000, iter = 100) => {
 const writeAndRead = async (max = 10000, iter = 10) => {
   let call = 0
   while (call < max) {
-    console.log('fetch')
-    // Create a large payload (50KB - 500KB)
-    const targetSize = 51200 + Math.floor(Math.random() * (512000 - 51200)) // 50KB - 500KB
-    const sentence = sentences[random(sentences.length)]
-    const sentenceLength = sentence.length
-    const repeatCount = Math.ceil(targetSize / sentenceLength)
-    const largePayload = sentence.repeat(repeatCount).slice(0, targetSize) // Split the sentence to fit the target size
+    // Create a large sentence (1KB - 50KB)
+    const minKB = 1
+    const maxKB = 50
+    const targetedSize = random(maxKB * 1024 - minKB * 1024 + 1) + minKB * 1024
+    const sentence = crypto.randomBytes(targetedSize).toString('utf-8')
+
+    // Create random keys for write and read (2^6 different keys)
+    const random_writeKey = random(2**6)
+    const writeKey = random_writeKey.toString(2)
+
+    const random_readKey = random(2**6)
+    const readKey = random_readKey.toString(2)
+
+    // Random number of write iteration
+    const write_iter = random(iter - 1) + 1
 
     const writeRes = Promise.all(
-      new Array(Math.floor(iter / 2)).fill(1).map((_) => {
-        const id = words[random(words.length)]
-        return setItem({ id, val: largePayload })
+      new Array(write_iter).fill(1).map((_) => {
+        return setItem({ id: writeKey, val: sentence })
       })
     )
+
     const readRes = Promise.all(
-      new Array(iter).fill(1).map((_) => getItem(words[random(words.length)]))
+      new Array(iter-write_iter).fill(1).map((_) => getItem(readKey))
     )
 
     const res = await Promise.all([writeRes, readRes])
 
     call += res.flatMap((_) => _).length
+    console.log('wait')
+    sleep(200)
     console.log(call)
   }
 }
@@ -97,7 +112,6 @@ const writeAndRead = async (max = 10000, iter = 10) => {
 const openPendingConnections = async (max = 200, time = 10000) => {
   const requests = [];
   for (let i = 0; i < max; i++) {
-    console.log('fetch')
     requests.push(unsafe(time));
   }
   await Promise.all(requests);

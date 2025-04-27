@@ -33,11 +33,11 @@ spec:
             - "no"
           resources:
             requests:
-              cpu: 60m
+              cpu: 50m
               memory: 100Mi
             limits:
-              cpu: 120m
-              memory: 200Mi
+              cpu: 100m
+              memory: 180Mi
         - name: redis-replica-exporter
           image: faioa/crv:olivier006_redis_exporter
           imagePullPolicy: IfNotPresent

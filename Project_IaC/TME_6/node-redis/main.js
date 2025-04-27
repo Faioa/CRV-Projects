@@ -47,6 +47,17 @@ app.use(
   })
 )
 
+app.use((err, req, res, next) => {
+  log.error(err)
+  res.status(500).json({ error: 'Internal Server Error' })
+})
+
+app.use((req, res, next) => {
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=30');
+  next();
+});
+
 app.get('/', (req, res) => {
   const now = Date.now()
   log('It is working, good job ', UUID, now)
@@ -82,15 +93,16 @@ app.get('/items', (req, res) => {
 app.get('/unsafe', (req, res) => {
   const delayMs = parseInt(req.query.time) || 10000
   log('unsafe endpoint called with delay', delayMs)
-  req.socket.setTimeout(0)
+  req.socket.setTimeout(delayMs + 1000)
   setTimeout(() => {
     res.send('ok')
   }, delayMs)
-});
+})
 
 const server = app.listen(port, () => {
   log(`listening at http://localhost:${port} server ${UUID}`)
+  server.maxConnections = 10000;
+  server.timeout = 30000;
+  server.keepAliveTimeout = 30000;
+  server.headersTimeout = 32000;
 })
-server.timeout = 0;
-server.keepAliveTimeout = 0;
-server.headersTimeout = 0;

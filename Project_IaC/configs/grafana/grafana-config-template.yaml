@@ -1150,8 +1150,8 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum by(route, method) (\n  idelta(http_requests_total{app=\"node-redis\"}[15m])\n  or\n  http_requests_total{app=\"node-redis\"} > 0\n)",
-              "legendFormat": "{{method}} : {{route}}",
+              "expr": "sum by(route, method, kubernetes_pod_name) (\n  idelta(http_requests_total{app=\"node-redis\"}[15m])\n  or\n  http_requests_total{app=\"node-redis\"} > 0\n)",
+              "legendFormat": "{{kubernetes_pod_name}} {{method}} : {{route}}",
               "range": true,
               "refId": "A"
             }
@@ -1336,9 +1336,9 @@ data:
             {
               "editorMode": "code",
               "exemplar": false,
-              "expr": "avg by(method, route) (\n  (\n    rate(http_request_duration_seconds_sum{app=\"node-redis\"}[2s])\n    /\n    rate(http_request_duration_seconds_count{app=\"node-redis\"}[2s])\n  )\n  or\n  (\n    http_request_duration_seconds_sum{app=\"node-redis\"}\n    /\n    http_request_duration_seconds_count{app=\"node-redis\"}\n  )\n)",
+              "expr": "avg by(method, route, kubernetes_pod_name) (\n  (\n    rate(http_request_duration_seconds_sum{app=\"node-redis\"}[2s])\n    /\n    rate(http_request_duration_seconds_count{app=\"node-redis\"}[2s])\n  )\n  or\n  (\n    http_request_duration_seconds_sum{app=\"node-redis\"}\n    /\n    http_request_duration_seconds_count{app=\"node-redis\"}\n  )\n)",
               "instant": false,
-              "legendFormat": "{{method}} : {{route}}",
+              "legendFormat": "{{kubernetes_pod_name}} {{method}} : {{route}}",
               "range": true,
               "refId": "A"
             }

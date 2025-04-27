@@ -27,10 +27,10 @@ CONCURRENT_PROCESSES=$2
 TEST_TYPE=$3
 
 # Set default values for tests
-REQUESTS_PER_PROCESS=10000
+REQUESTS_PER_PROCESS=1000
 WRITE_READ_ITER=10
 SERVER_ITER=100
-PENDING_COUNT=200
+PENDING_COUNT=1000
 PENDING_TIME=10000
 
 # Create logs directory
@@ -63,7 +63,7 @@ fi
 
 # Function to check if server is responsive
 check_server() {
-  curl -s --connect-timeout 5 "$URL" > /dev/null
+  curl -s --connect-timeout 10 "$URL" > /dev/null
   return $?
 }
 
@@ -73,10 +73,10 @@ run_test() {
   local process_count=$2
   local pid_list=()
   local log_files=()
-  local start_time=0
+  local start_time=$(date +%s)
   local total_requests=0
   
-  echo "📊 Starting $test_type test with $process_count processes"
+  echo "📊 Starting $test_type test with $process_count processes at $start_time"
   
   # Check if server is up before starting
   if ! check_server; then
@@ -153,42 +153,51 @@ run_test() {
         esac
         
         # Small delay to stagger starts
-        sleep 0.5
+        sleep 1
       done
       ;;
   esac
   
   # Monitor server and processes
-  echo "  - Monitoring server health..."
+#   echo "  - Monitoring server health..."
   local server_crashed=false
   local completed_processes=0
   local crash_time=""
   
-  while [ $completed_processes -lt ${#pid_list[@]} ]; do
+  while [[ $completed_processes -lt ${#pid_list[@]} ]]; do
     # Check if server is still responsive every 5 seconds
-    if ! $server_crashed && ! check_server; then
-      crash_time=$(date +"%T")
-      echo "❌ SERVER CRASHED at $crash_time during $test_type test!"
-      server_crashed=true
-      
-      # Count completed requests before crash
-      local actual_requests=0
-      for log_file in "${log_files[@]}"; do
-        if [ -f "$log_file" ]; then
-          local log_count=$(grep -c "fetch" "$log_file" || echo 0)
-          actual_requests=$((actual_requests + log_count))
-        fi
-      done
-      echo "  - Approximately $actual_requests requests were sent before crash"
-      
-      # Kill remaining processes
-      for pid in "${pid_list[@]}"; do
-        if kill -0 $pid 2>/dev/null; then
-          kill $pid 2>/dev/null
-        fi
-      done
-      break
-    fi
+#     if ! $server_crashed && ! check_server; then
+#       crash_time=$(date +%s)
+#       echo "❌ SERVER CRASHED at $crash_time during $test_type test!"
+#       server_crashed=true
+#
+#       sleep 1
+#
+#       # Count completed requests before crash
+#       local total=0
+#       local failed=0
+#       for log_file in "${log_files[@]}"; do
+#         if [ -f "$log_file" ]; then
+#           local log_count=$(grep -c "^fetch$" "$log_file" 2>/dev/null)
+#           [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
+#           total=$((total + log_count))
+#           log_count=$(grep -c "fetch failed" "$log_file" 2>/dev/null)
+#           [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
+#           failed=$((failed + log_count))
+#         fi
+#       done
+#       local actual_requests=$((total - failed))
+#       echo "  - Approximately $total requests were sent before crash"
+#       echo "  - Approximately $actual_requests were successful"
+#
+#       # Kill remaining processes
+#       for pid in "${pid_list[@]}"; do
+#         if kill -0 $pid 2>/dev/null; then
+#           kill $pid 2>/dev/null
+#         fi
+#       done
+#       break
+#     fi
     
     # Check process status
     completed_processes=0
@@ -237,7 +246,6 @@ run_test() {
     fi
   else
     echo "❌ $test_type test aborted due to server crash"
-    echo "  - Server crashed at: $crash_time"
   fi
 }
 

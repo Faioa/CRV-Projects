@@ -8,7 +8,7 @@ spec:
     kind: Deployment
     name: node-redis
   minReplicas: 1
-  maxReplicas: 2
+  maxReplicas: 3
   metrics:
   - type: Resource
     resource:
@@ -24,6 +24,6 @@ spec:
         averageUtilization: 70
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 30
+      stabilizationWindowSeconds: 5
     scaleDown:
       stabilizationWindowSeconds: 180

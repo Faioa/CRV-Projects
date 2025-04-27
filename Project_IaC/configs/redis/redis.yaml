@@ -45,11 +45,11 @@ spec:
             mountPath: /data
           resources:
             requests:
-              cpu: 80m
-              memory: 120Mi
+              cpu: 30m
+              memory: 100Mi
             limits:
-              cpu: 150m
-              memory: 250Mi
+              cpu: 110m
+              memory: 160Mi
         - name: redis-exporter
           image: faioa/crv:olivier006_redis_exporter
           imagePullPolicy: IfNotPresent

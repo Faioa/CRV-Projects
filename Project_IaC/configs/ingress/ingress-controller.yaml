@@ -322,7 +322,6 @@ subjects:
   namespace: ingress-nginx
 ---
 apiVersion: v1
-data: null
 kind: ConfigMap
 metadata:
   labels:
@@ -333,6 +332,15 @@ metadata:
     app.kubernetes.io/version: 1.12.1
   name: ingress-nginx-controller
   namespace: ingress-nginx
+data:
+  worker-processes: "2"
+  reuseport: "on"
+  worker-connections: "100000"
+  max-worker-connections: "100000"
+  proxy-connect-timeout: "60"
+  proxy-read-timeout: "60"
+  proxy-send-timeout: "60"
+  keepalive_timeout: "65"
 ---
 apiVersion: v1
 kind: Service
@@ -487,11 +495,11 @@ spec:
           timeoutSeconds: 1
         resources:
           requests:
-            cpu: 100m
-            memory: 200Mi
-          limits:
-            cpu: 300m
+            cpu: 2
             memory: 400Mi
+          limits:
+            cpu: 2
+            memory: 2000Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

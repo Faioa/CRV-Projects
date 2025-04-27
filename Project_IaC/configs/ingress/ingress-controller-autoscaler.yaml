@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: ingress-nginx-controller
   minReplicas: 1
-  maxReplicas: 2
+  maxReplicas: 1
   metrics:
   - type: Resource
     resource:
@@ -23,8 +23,14 @@ spec:
       target:
         type: Utilization
         averageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: 60
+      stabilizationWindowSeconds: 5
     scaleDown:
       stabilizationWindowSeconds: 300
