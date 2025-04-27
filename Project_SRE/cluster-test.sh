@@ -74,7 +74,6 @@ run_test() {
   local pid_list=()
   local log_files=()
   local start_time=$(date +%s)
-  local total_requests=0
   
   echo "📊 Starting $test_type test with $process_count processes at $start_time"
   
@@ -94,7 +93,6 @@ run_test() {
         log_files+=("$log_file")
         echo "  - Started server test process $i with PID ${pid_list[-1]}"
       done
-      total_requests=$((process_count * REQUESTS_PER_PROCESS))
       ;;
     "writeRead")
       start_time=$(date +%s)
@@ -105,8 +103,6 @@ run_test() {
         log_files+=("$log_file")
         echo "  - Started writeRead test process $i with PID ${pid_list[-1]}"
       done
-      # Write/read has roughly 1.1 requests per iteration due to the mix of operations
-      total_requests=$((process_count * REQUESTS_PER_PROCESS * 11 / 10))
       ;;
     "pending")
       start_time=$(date +%s)
@@ -117,7 +113,6 @@ run_test() {
         log_files+=("$log_file")
         echo "  - Started pending connections test process $i with PID ${pid_list[-1]}"
       done
-      total_requests=$((process_count * PENDING_COUNT))
       ;;
     "combined")
       start_time=$(date +%s)
@@ -148,58 +143,18 @@ run_test() {
             pid_list+=($!)
             log_files+=("$log_file")
             echo "  - Started random test (pending) with PID ${pid_list[-1]}"
-            total_requests=$((total_requests + PENDING_COUNT))
             ;;
         esac
         
         # Small delay to stagger starts
-        sleep 1
+        sleep 0.5
       done
       ;;
   esac
-  
-  # Monitor server and processes
-#   echo "  - Monitoring server health..."
-  local server_crashed=false
   local completed_processes=0
-  local crash_time=""
-  
+
   while [[ $completed_processes -lt ${#pid_list[@]} ]]; do
-    # Check if server is still responsive every 5 seconds
-#     if ! $server_crashed && ! check_server; then
-#       crash_time=$(date +%s)
-#       echo "❌ SERVER CRASHED at $crash_time during $test_type test!"
-#       server_crashed=true
-#
-#       sleep 1
-#
-#       # Count completed requests before crash
-#       local total=0
-#       local failed=0
-#       for log_file in "${log_files[@]}"; do
-#         if [ -f "$log_file" ]; then
-#           local log_count=$(grep -c "^fetch$" "$log_file" 2>/dev/null)
-#           [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
-#           total=$((total + log_count))
-#           log_count=$(grep -c "fetch failed" "$log_file" 2>/dev/null)
-#           [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
-#           failed=$((failed + log_count))
-#         fi
-#       done
-#       local actual_requests=$((total - failed))
-#       echo "  - Approximately $total requests were sent before crash"
-#       echo "  - Approximately $actual_requests were successful"
-#
-#       # Kill remaining processes
-#       for pid in "${pid_list[@]}"; do
-#         if kill -0 $pid 2>/dev/null; then
-#           kill $pid 2>/dev/null
-#         fi
-#       done
-#       break
-#     fi
-    
-    # Check process status
+    # Check process status every second
     completed_processes=0
     for i in "${!pid_list[@]}"; do
       if ! kill -0 ${pid_list[$i]} 2>/dev/null; then
@@ -213,40 +168,37 @@ run_test() {
   
   echo ""
   
-  # Calculate statistics if no crash occurred
-  if ! $server_crashed; then
-    local end_time=$(date +%s)
-    local duration=$((end_time - start_time))
-    
-    # Count actual requests from logs
-    local total=0
-    local failed=0
-    for log_file in "${log_files[@]}"; do
-      if [ -f "$log_file" ]; then
-        local log_count=$(grep -c "^fetch$" "$log_file" 2>/dev/null)
-        [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
-        total=$((total + log_count))
-        log_count=$(grep -c "fetch failed" "$log_file" 2>/dev/null)
-        [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
-        failed=$((failed + log_count))
-      fi
-    done
-    local actual_requests=$((total - failed))
+  # Calculate statistics
+  local end_time=$(date +%s)
+  local duration=$((end_time - start_time))
 
-    if [ $duration -gt 0 ]; then
-      local requests_per_second=$(bc <<< "scale=2; $total / $duration")
-      echo "✅ $test_type test completed successfully"
-      echo "📈 Statistics:"
-      echo "  - Total requests: $total"
-      echo "  - Total success: $actual_requests"
-      echo "  - Test duration: $duration seconds"
-      echo "  - Throughput: $requests_per_second requests/second"
-    else
-      echo "✅ $test_type test completed too quickly to measure throughput"
+  # Count actual requests from logs
+  local total=0
+  local failed=0
+  for log_file in "${log_files[@]}"; do
+    if [ -f "$log_file" ]; then
+      local log_count=$(grep -c "^fetch$" "$log_file" 2>/dev/null)
+      [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
+      total=$((total + log_count))
+      log_count=$(grep -c "failed" "$log_file" 2>/dev/null)
+      [[ "$log_count" =~ ^[0-9]+$ ]] || log_count=0
+      failed=$((failed + log_count))
     fi
+  done
+  local actual_requests=$((total - failed))
+
+  if [ $duration -gt 0 ]; then
+    local requests_per_second=$(bc <<< "scale=2; $total / $duration")
+    echo "✅ $test_type test completed successfully"
+    echo "📈 Statistics:"
+    echo "  - Total requests: $total"
+    echo "  - Total success: $actual_requests"
+    echo "  - Test duration: $duration seconds"
+    echo "  - Throughput: $requests_per_second requests/second"
   else
-    echo "❌ $test_type test aborted due to server crash"
+    echo "✅ $test_type test completed too quickly to measure throughput"
   fi
+
 }
 
 # Main script execution
@@ -258,6 +210,6 @@ echo "Test type: $TEST_TYPE"
 # Run the specified test
 run_test "$TEST_TYPE" "$CONCURRENT_PROCESSES"
 
-if [ -d "$LOGS_DIR" ]; then
+if [[ -d "$LOGS_DIR" ]]; then
   echo "📝 Test logs available in $LOGS_DIR directory"
 fi

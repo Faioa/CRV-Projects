@@ -47,6 +47,3 @@ node fetchData.js pending 200 10000
 
 ## Report
 - The report contains detailed explanations of the observations from relevant scenarios with scientific charts (e.g., max load, optimal load, scaling behavior) and detailed analysis.
-
-## Code
-...
