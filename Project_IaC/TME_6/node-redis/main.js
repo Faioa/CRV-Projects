@@ -25,10 +25,9 @@ readClient.on('error', (err) => log('Redis Replicas Client Error', err))
 await Promise.all([client.connect(), readClient.connect()])
 
 await client.set('key', 'redis connected to ' + REDIS_URL)
-const value = await client.get('key')
+const value = await readClient.get('key')
 log(value)
 log(`redis replicas connected to ${REDIS_REPLICAS_URL}`)
-
 log(`Set "key" value to "${value}"`)
 
 export const app = express()
